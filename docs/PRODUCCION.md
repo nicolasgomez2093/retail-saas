@@ -51,4 +51,6 @@ La contraseña inicial se escribe por la entrada estándar (no queda en el histo
 
 ## Dominio propio
 
-Apuntar el registro A del dominio a la IP del servidor, cambiar `DOMAIN` en `.env` y volver a desplegar. Caddy obtiene el certificado nuevo solo. Las sesiones abiertas se pierden porque cambia el origen.
+Apuntar los registros A y AAAA del dominio a la IP del servidor, poner el dominio nuevo en `DOMAIN` y el anterior en `LEGACY_DOMAIN` (redirige al nuevo conservando la ruta) y volver a desplegar. Caddy obtiene los certificados solo. Las sesiones abiertas se pierden porque cambia el origen.
+
+Dominio actual: `retail.rumbosolutions.tech`; `srv2195163.hstgr.cloud` redirige a él.

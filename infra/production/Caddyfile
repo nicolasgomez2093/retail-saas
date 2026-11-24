@@ -24,3 +24,9 @@
 		file_server
 	}
 }
+
+# Previous address (for example the provider hostname): redirect to the main domain, keeping the path.
+# Unset, it falls back to a placeholder that never matches a real request.
+{$LEGACY_DOMAIN:http://legacy.invalid} {
+	redir https://{$DOMAIN}{uri} permanent
+}
