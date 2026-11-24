@@ -9,7 +9,7 @@ El piloto necesita una dirección pública con HTTPS. La sesión exige que la we
 - Un VPS (Hostinger KVM 2, Ubuntu 24.04) con Docker Compose: Caddy, API, migraciones, PostgreSQL 17 y un servicio de respaldo.
 - Caddy termina HTTPS (Let's Encrypt), sirve la PWA compilada con caída a `index.html` y reenvía `/api/*`. Agrega CSP, HSTS y cabeceras de caché para la web; la API conserva las suyas.
 - Solo los puertos 22, 80 y 443 quedan abiertos. La base y la API no publican puertos.
-- `TRUSTED_PROXIES` se limita a la subred interna fija de Compose, así el límite de intentos de inicio de sesión ve la IP real.
+- `TRUSTED_PROXIES` se limita a las subredes internas fijas de Compose (IPv4 e IPv6), así el límite de intentos de inicio de sesión ve la IP real. La red interna tiene IPv6 para que los clientes IPv6 no lleguen todos con la dirección del proxy de Docker.
 - Las migraciones corren en cada despliegue antes de la API.
 - Respaldo lógico diario con SHA-256 y retención de 14 días, en el disco del servidor.
 - Despliegue con `infra/production/deploy.sh`: copia el commit, construye en el servidor y verifica salud. Los secretos viven solo en el `.env` del servidor.

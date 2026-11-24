@@ -28,7 +28,7 @@ services:
       DATABASE_URL: postgres://retail:${POSTGRES_PASSWORD}@db:5432/retail?sslmode=disable
       WEB_ORIGIN: https://${DOMAIN:?set DOMAIN in .env}${PUBLIC_PORT_SUFFIX:-}
       COOKIE_SECURE: "true"
-      TRUSTED_PROXIES: 172.30.0.0/24
+      TRUSTED_PROXIES: 172.30.0.0/24,fd72:6574:6169::/64
     networks: [internal]
     depends_on:
       db:
@@ -91,9 +91,13 @@ services:
 
 networks:
   internal:
+    # IPv6 lets Docker NAT IPv6 clients straight to Caddy; without it docker-proxy relays them and
+    # every IPv6 visitor would reach the API with the same internal address.
+    enable_ipv6: true
     ipam:
       config:
         - subnet: 172.30.0.0/24
+        - subnet: fd72:6574:6169::/64
 
 volumes:
   postgres-data:
