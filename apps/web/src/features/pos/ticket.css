@@ -1,0 +1,72 @@
+.ticket-dialog {
+  box-sizing: border-box;
+  width: min(28rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #557771;
+  border-radius: .75rem;
+  color: #173b37;
+}
+.ticket-dialog::backdrop { background: rgb(16 35 31 / 55%); }
+.ticket-dialog[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.ticket-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem;
+}
+.ticket-dialog h2 { margin: 0 0 .75rem; }
+.ticket-scroll > p { margin: .5rem 0 0; }
+.ticket-dialog > .actions {
+  padding: .75rem 1.25rem;
+  border-top: 1px solid #557771;
+}
+.ticket-dialog > .actions button { min-height: 44px; }
+.ticket-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: start center;
+  margin-top: .75rem;
+}
+.ticket-preview .receipt { border: 1px solid #557771; padding: .5rem; }
+.receipt {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 auto;
+  background: white;
+  color: black;
+  font: 3mm/1.3 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+.receipt header { text-align: center; font-weight: 400; }
+.receipt header strong, .receipt h3 { font-size: 3.6mm; }
+.receipt h3 { margin: 1mm 0; }
+.receipt-notice { border-block: 1px solid black; padding: 1mm 0; margin: 2mm 0; }
+.receipt-notice :is(strong, b) { display: block; }
+.receipt .receipt-notice strong { font-size: 3mm; }
+.receipt ul { list-style: none; padding: 0; margin: 2mm 0; border-bottom: 1px solid black; }
+.receipt li { border-top: 1px solid black; margin: 0; padding: 1mm 0; }
+.receipt dl { break-inside: avoid; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: .25mm 1mm; }
+.receipt dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.receipt .receipt-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: .4mm;
+  font-size: 2.8mm;
+}
+.receipt-line dd { margin-inline-start: auto; }
+.receipt-line dd, .receipt-payment dl > :nth-child(-n+2) { font-weight: 700; }
+.receipt li, .receipt header, .receipt-payment { break-inside: avoid; }
+.ticket-print { display: none; }
+@page retail-ticket { margin: 3mm; }
+@media print {
+  body:has(> .ticket-print) { margin: 0; padding: 0; background: white; }
+  body:has(> .ticket-print) > :not(.ticket-print), .ticket-dialog { display: none !important; }
+  .ticket-print { display: block; }
+  .ticket-print .receipt { page: retail-ticket; }
+}

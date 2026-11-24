@@ -1,0 +1,99 @@
+.label-dialog {
+  box-sizing: border-box;
+  width: min(30rem, calc(100% - 2rem));
+  padding: 1.25rem;
+  border: 1px solid #557771;
+  border-radius: .75rem;
+  color: #173b37;
+}
+.label-dialog::backdrop { background: rgb(16 35 31 / 55%); }
+.label-dialog h2 { margin-top: 0; }
+.label-settings { display: grid; gap: .75rem; margin-bottom: 1rem; }
+.label-preview {
+  width: fit-content;
+  max-width: 100%;
+  margin: 1rem auto;
+  border: 1px solid #557771;
+}
+.retail-label {
+  box-sizing: border-box;
+  width: 60mm;
+  max-width: 100%;
+  height: 40mm;
+  padding: 2.5mm 3mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .65mm;
+  overflow: hidden;
+  text-align: center;
+  background: white;
+  color: black;
+  font: 3mm/3.5mm system-ui, sans-serif;
+}
+.retail-label-product {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 3.6mm;
+  line-height: 4.2mm;
+}
+.retail-label-line {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.retail-label img { display: block; max-width: 100%; height: auto; flex: none; }
+.retail-label-code { font-family: ui-monospace, monospace; font-size: 2.6mm; }
+.label-print { display: none; }
+
+@media screen {
+  .label-dialog { max-height: calc(100dvh - 1rem); overflow: auto; padding: .85rem; }
+  .label-dialog-header {
+    display: flex; justify-content: space-between; align-items: center; gap: .6rem;
+    position: sticky; top: -.85rem; z-index: 1; padding: .35rem 0; background: var(--surface);
+  }
+  .label-dialog-header h2 { margin: 0; }
+  .label-dialog-header button { flex: none; white-space: nowrap; }
+  .label-dialog :is(button, input, select) { min-height: 44px; }
+  .label-dialog .label-identity { display: grid; gap: .15rem; overflow-wrap: anywhere; margin-block: .45rem; }
+  .label-dialog .label-identity span { color: var(--muted); }
+  .label-dialog .label-settings { grid-template-columns: minmax(0, 1fr) minmax(5rem, .35fr); gap: .55rem; }
+  .label-dialog .label-settings :is(input, select) { width: 100%; }
+  .label-dialog .label-preview { margin-block: .65rem; }
+}
+
+@page retail-label { size: 60mm 40mm; margin: 0; }
+@media print {
+  body:has(> .label-print) { margin: 0; padding: 0; background: white; }
+  body:has(> .label-print) > :not(.label-print), .label-dialog { display: none !important; }
+  .label-print { display: block; }
+  .label-print .retail-label { page: retail-label; break-inside: avoid; print-color-adjust: exact; }
+  .label-print .retail-label:not(:last-child) { break-after: page; }
+}
+
+@media screen {
+  .label-batch-dialog { width: min(46rem, calc(100% - 1rem)); }
+  .label-batch-rows { list-style: none; margin: 0; padding: 0; }
+  .label-batch-rows > li {
+    display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(70px,.4fr);
+    gap: 8px 12px; align-items: end; padding: 12px 0;
+  }
+  .label-batch-rows :is(label, span, select, input) { min-width: 0; overflow-wrap: anywhere; }
+  .label-batch-rows :is(select,input[type="number"]) { width: 100%; }
+  .label-batch-rows :is(small,p) { grid-column: 1 / -1; margin: 0; }
+  .label-batch-dialog .actions { flex-wrap: wrap; }
+}
+@media screen and (width < 520px) {
+  .label-batch-rows > li { grid-template-columns: minmax(0,1fr) minmax(72px,.45fr); }
+  .label-batch-rows .checkbox { grid-column: 1 / -1; }
+}
+.label-wide .retail-label { width: 100mm; }
+@page retail-label-wide { size: 100mm 40mm; margin: 0; }
+@media print {
+  .label-print.label-wide .retail-label { page: retail-label-wide; }
+}

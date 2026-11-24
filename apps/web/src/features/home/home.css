@@ -1,0 +1,58 @@
+.home-view { display: grid; gap: .75rem; container: home / inline-size; }
+.home-view > :empty { display: none; }
+.home-notice, .home-panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  padding: .8rem 1rem;
+}
+.home-notice { background: #fff1d8; color: #604314; }
+.home-view p, .home-panel h2 { margin: 0; }
+.home-panel { display: flex; flex-direction: column; gap: .35rem; }
+.home-view .home-panel + .home-panel { margin-top: 0; border-top-color: var(--line); }
+.home-panel h2 { color: var(--muted); font-size: .95rem; }
+.home-sales { border-inline-start: .25rem solid var(--accent); }
+.home-sales .home-value strong { font-size: clamp(1.2rem, 3vw, 1.8rem); }
+.home-secondary {
+  display: grid;
+  gap: .65rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+.home-view .home-value { display: grid; gap: .15rem; }
+.home-value strong { font-size: 1.08rem; font-variant-numeric: tabular-nums; }
+.home-value span, .home-recent-sales time { color: var(--muted); font-size: .85rem; }
+.home-panel a, .home-notice a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  width: fit-content;
+  margin-top: auto;
+  color: var(--accent);
+  font-weight: 650;
+}
+.home-view button, .home-sale-action a { min-height: 44px; }
+.home-sale-action a { display: inline-flex; align-items: center; }
+.home-recent-sales ul { padding: 0; margin: 0; list-style: none; }
+.home-recent-sales li {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: .4rem .75rem;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.home-recent-sales time { display: block; }
+@container home (21rem <= width < 54rem) {
+  .home-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-secondary > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .home-secondary .home-panel { padding-inline: .65rem; }
+}
+
+@container home (width >= 54rem) {
+  .home-secondary { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+}

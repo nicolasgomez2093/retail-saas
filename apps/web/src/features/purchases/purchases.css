@@ -1,0 +1,272 @@
+/* Compras y proveedores. Every value comes from retail_mockup_final.html:
+   .head, .metrics/.metric, .card, .panelhead, .panelbody, .filters/.search,
+   .variantrow, .pill, .btn, .note, .statrow, th/td, .modal and .toast.
+   The screens the prototype does not draw (multi-line order, receiving and
+   result) extend the same pieces, as the quick product creation does. */
+.pu{--p-green:var(--accent,#22664f);--p-line:var(--line,#d9e2dc);--p-muted:var(--muted,#64756e);--p-ink:var(--ink,#20342d);
+  color:var(--p-ink);animation:pu-enter .22s ease;min-width:0}
+@keyframes pu-enter{from{opacity:.5;transform:translateY(5px)}}
+/* The page draws its own cards like the HTML: no legacy panel around it. */
+.commercial-shell .feature-panel:has(>.pu){background:transparent;border:0;padding:0}
+.pu header,.pu-dialog header{font-weight:inherit}
+.app-shell .pu h2:focus,.app-shell .pu h3:focus{outline:none}
+.app-shell .pu :focus-visible,.app-shell .pu-dialog :focus-visible{outline:3px solid #89b7a4;outline-offset:2px}
+.app-shell form.pu-form{max-width:none}
+.pu-breadcrumb{font-size:12px;color:var(--p-muted);margin-bottom:16px}
+
+.pu-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:26px}
+.pu-head h2{font-size:30px;letter-spacing:-1.1px;margin:0 0 5px;line-height:1.15}
+.pu-head p{margin:0;color:var(--p-muted);font-size:15px}
+.pu-head-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+.pu-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.pu-metric{background:#fff;border:1px solid var(--p-line);border-radius:13px;padding:19px 22px;min-width:0}
+.pu-metric small{color:var(--p-muted);font-size:12px}
+.pu-metric strong{display:block;font-size:30px;letter-spacing:-1px;margin:5px 0}
+.pu-metric span{font-size:12px;color:var(--p-muted)}
+
+.pu-card{background:#fff;border:1px solid var(--p-line);border-radius:13px;overflow:hidden;min-width:0}
+.pu-panelhead{padding:20px 22px;border-bottom:1px solid var(--p-line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.pu-panelhead h2,.pu-panelhead h3{font-size:18px;margin:0 0 3px}
+.pu-panelhead p{margin:0;color:var(--p-muted);font-size:12px}
+.pu-panelbody{padding:22px}
+.pu-filters{padding:17px;display:flex;gap:10px;border-bottom:1px solid var(--p-line);flex-wrap:wrap}
+.pu-search{display:flex;align-items:center;gap:10px;border:1px solid var(--p-line);border-radius:9px;background:#f8faf7;padding:0 13px;flex:1 1 260px;min-width:0}
+.app-shell .pu .pu-search input:not([type=checkbox]){border:0;outline:none;background:none;padding:13px 0;width:100%;min-width:0;min-height:0;box-shadow:none}
+.pu-search:focus-within{outline:3px solid #89b7a4;outline-offset:2px}
+.app-shell .pu .pu-filters :is(select,input[type=date]){width:auto;min-width:140px;flex:0 1 auto}
+
+.app-shell .pu :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;border:1px solid var(--p-line);border-radius:9px;background:#fff;color:var(--p-ink);font:inherit;font-weight:500;min-height:44px;padding:10px 12px}
+.app-shell .pu textarea{min-height:64px;resize:vertical}
+.app-shell .pu :is(input,select,textarea)[aria-invalid=true]{border-color:var(--danger,#b4232c);box-shadow:inset 0 0 0 1px var(--danger,#b4232c)}
+.pu-formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pu-formgrid label,.pu-label{display:grid;gap:7px;font-weight:700;font-size:13px;align-content:start}
+.pu-formgrid .wide{grid-column:1/-1}
+.pu-hint{font-size:12px;color:var(--p-muted);font-weight:500;margin:0}
+.pu-error{color:var(--danger,#b4232c);font-size:12px;font-weight:600;margin:0}
+
+/* .btn, including hover lift and transition. */
+.app-shell .pu button.pu-btn,.app-shell .pu-dialog button.pu-btn,.app-shell .pu a.pu-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#fff;color:var(--p-ink,#20342d);border:1px solid var(--p-line,#d9e2dc);border-radius:9px;min-height:43px;padding:10px 16px;font:inherit;font-weight:700;transition:.16s;cursor:pointer;width:auto;text-decoration:none}
+.app-shell .pu button.pu-btn:hover:not(:disabled),.app-shell .pu-dialog button.pu-btn:hover:not(:disabled),.app-shell .pu a.pu-btn:hover{transform:translateY(-1px);border-color:#9dbbad;box-shadow:0 5px 15px #173d3210}
+.app-shell .pu button.pu-btn.primary,.app-shell .pu-dialog button.pu-btn.primary{background:var(--p-green,#22664f);border-color:var(--p-green,#22664f);color:#fff}
+.app-shell .pu button.pu-btn.primary:hover:not(:disabled),.app-shell .pu-dialog button.pu-btn.primary:hover:not(:disabled){background:#174d3c;border-color:var(--p-green,#22664f)}
+.app-shell .pu button.pu-btn:disabled,.app-shell .pu-dialog button.pu-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.app-shell .pu button.pu-btn.wide,.app-shell .pu-dialog button.pu-btn.wide{width:100%}
+.app-shell .pu button.pu-link,.app-shell .pu-dialog button.pu-link{border:0;background:none;color:var(--p-green,#22664f);font:inherit;font-weight:800;cursor:pointer;padding:0;min-height:0;width:auto}
+.app-shell .pu button.pu-link:hover,.app-shell .pu-dialog button.pu-link:hover{text-decoration:underline}
+.app-shell .pu button.pu-link.danger,.app-shell .pu-dialog button.pu-link.danger{color:var(--danger,#b4232c)}
+.app-shell .pu button.pu-icon{background:#fff;border:1px solid var(--p-line);color:var(--p-muted);border-radius:8px;width:34px;min-width:34px;height:34px;min-height:34px;padding:0;display:inline-grid;place-items:center;font-size:15px;transition:.16s;cursor:pointer}
+.app-shell .pu button.pu-icon:hover:not(:disabled){color:var(--p-ink);border-color:#9dbbad;background:#f3f8f3}
+.pu-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+
+.pu-pill{display:inline-flex;align-items:center;justify-self:start;border-radius:7px;background:#e5f1e5;color:#1b6b3f;font-size:12px;font-weight:700;padding:5px 9px;white-space:nowrap}
+.pu-pill.warning{background:var(--warn,#fff0d5);color:#9a6500}
+.pu-pill.danger{background:#fce9e9;color:var(--danger,#b4232c)}
+.pu-pill.muted{background:#eef1ef;color:var(--p-muted)}
+
+.pu-note{background:#edf5ed;border-radius:10px;padding:16px;color:#355c47;line-height:1.6;font-size:13px;margin:16px 0}
+.pu-note.warn{background:#fff5e4;color:#8a5b17}
+.pu-note p{margin:0}
+.pu-alert{background:#fce9e9;color:var(--danger,#b4232c);border-radius:10px;padding:14px 16px;font-weight:700;margin:0 0 16px}
+.pu-alert.warn{background:#fff5e4;color:#8a5b17}
+
+/* .variantrow: one order or supplier per row. */
+.pu-rows{list-style:none;margin:0;padding:0}
+.pu-row{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--p-line);margin:0;transition:background .16s}
+.pu-row:last-child{border:0}
+.pu-row:hover{background:#fafcf9}
+.pu-row b{overflow-wrap:anywhere}
+.pu-row small{display:block;color:var(--p-muted);margin-top:3px;font-size:12px}
+.pu-row[aria-current=true]{background:#f3f8f3}
+.pu-empty{text-align:center;padding:56px 20px;color:var(--p-muted)}
+.pu-empty h3{color:var(--p-ink);margin:0 0 6px;font-size:17px}
+.pu-empty p{margin:0 0 16px}
+.pu-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid var(--p-line);font-size:13px;color:var(--p-muted)}
+.pu-status{padding:20px 22px;color:var(--p-muted);margin:0}
+
+/* th/td of the HTML. Narrow containers turn rows into cards. */
+.pu-table-wrap{container-type:inline-size;min-width:0}
+.pu-table{border-collapse:collapse;width:100%}
+.pu-table th,.pu-table td{text-align:left;padding:14px 18px;border-top:1px solid var(--p-line);vertical-align:middle;font-size:13px}
+.pu-table thead th{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#65776f;background:#f8faf7;border-top:0;font-weight:700}
+.pu-table tbody tr{transition:background .16s}
+.pu-table tbody tr:hover>:is(td,th){background:#fafcf9}
+.pu-table tbody th{font-weight:700;min-width:190px}
+.pu-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pu-table td.pu-cell-actions{text-align:right;white-space:nowrap}
+.pu-table small{display:block;color:var(--p-muted);font-size:12px;font-weight:500;margin-top:3px}
+.pu-table input:not([type=checkbox]),.pu-table select{min-height:38px;padding:8px 10px;border-radius:8px}
+.pu-table input.qty{width:88px;text-align:right}
+.pu-table input.cost{width:120px}
+.pu-table tr.flash>:is(td,th){background:#eef7ef}
+.pu-table tr.invalid>:is(td,th){background:#fffafa}
+.pu-table tr.invalid>:first-child{box-shadow:inset 3px 0 var(--danger,#b4232c)}
+.pu-table tfoot td,.pu-table tfoot th{background:#f8faf7;font-weight:800}
+.pu-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+@container (max-width:640px){
+  .pu-table thead{display:none}
+  .pu-table,.pu-table tbody,.pu-table tfoot,.pu-table tr{display:block}
+  .pu-table tr{border-top:1px solid var(--p-line);padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .pu-table tbody tr:first-child{border-top:0}
+  .pu-table :is(td,th){display:block;border:0;padding:0;min-width:0}
+  .pu-table :is(td,th):first-child{grid-column:1/-1}
+  .pu-table td.pu-cell-actions{grid-column:1/-1;text-align:left}
+  .pu-table td[data-label]::before{content:attr(data-label);display:block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#65776f;font-weight:700;margin-bottom:4px}
+  .pu-table .num{text-align:left}
+  .pu-table td[data-label=Diferencias]{grid-column:1/-1}
+  .app-shell .pu .pu-diff-pair input:not([type=checkbox]){width:96px;flex:none}
+  .pu-table tfoot :is(td,th):empty{display:none}
+  .pu-table tfoot tr{background:#f8faf7}
+  .pu-table input.qty,.pu-table input.cost{width:100%;text-align:left}
+}
+
+/* Form screens: main column and the .sidebox of the HTML. */
+.pu-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(290px,.75fr);gap:22px;align-items:start;margin:0}
+.pu-main{display:grid;gap:18px;min-width:0}
+.pu-side{position:sticky;top:18px;min-width:0}
+.pu-sidebox{padding:22px}
+.pu-sidebox h3{margin:0 0 16px;font-size:18px}
+.pu-sum{list-style:none;margin:0;padding:0}
+.pu-sum li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--p-line);margin:0;font-size:13px}
+.pu-sum li:last-child{border:0}
+.pu-sum span{color:var(--p-muted)}
+.pu-sum b{text-align:right;font-variant-numeric:tabular-nums}
+.pu-sum li.total{font-size:16px}
+.pu-sum li.total span{color:var(--p-ink);font-weight:700}
+.pu-sidebox button.pu-btn{margin-top:12px}
+.pu-sidebox button.pu-btn.primary{margin-top:20px}
+
+/* Finder: search or scan a variant to add it. */
+.pu-finder{display:grid;gap:10px}
+.pu-finder-bar{display:flex;gap:9px;flex-wrap:wrap}
+.pu-finder-bar .pu-search{flex:1 1 280px}
+.pu-results{list-style:none;margin:0;padding:0;border:1px solid var(--p-line);border-radius:12px;overflow:hidden}
+.pu-results>li{border-top:1px solid var(--p-line);margin:0}
+.pu-results>li:first-child{border-top:0}
+.pu-result-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px}
+.pu-result-head small{display:block;color:var(--p-muted);font-size:12px}
+.pu-variants{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 14px}
+.app-shell .pu button.pu-chip{border:1px solid var(--p-line);padding:7px 12px;border-radius:30px;font:inherit;font-weight:700;background:#fff;color:var(--p-ink);min-height:36px;width:auto;transition:background .16s,border-color .16s;cursor:pointer}
+.app-shell .pu button.pu-chip:hover:not(:disabled){background:#f3f8f3;border-color:#b1ceba}
+.app-shell .pu button.pu-chip[aria-pressed=true]{background:#e4f1e8;color:var(--p-green);border-color:#a4cbb7}
+.app-shell .pu button.pu-chip[aria-pressed=true]::before{content:'✓ '}
+.app-shell .pu button.pu-chip:disabled{opacity:.5;cursor:not-allowed}
+.pu-chip small{color:var(--p-muted);font-weight:500;margin-left:4px}
+.pu-feedback{font-size:13px;font-weight:700;margin:0;color:#1b6b3f}
+.pu-feedback.warn{color:#9a6500}
+.pu-feedback.danger{color:var(--danger,#b4232c)}
+
+/* Supplier selection. */
+.pu-supplier{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #a4cbb7;background:#f3f8f3;border-radius:12px;padding:13px 15px}
+.pu-supplier b{display:block}
+.pu-supplier button{white-space:nowrap;flex:none}
+.pu-supplier small{color:var(--p-muted);font-size:12px}
+.pu-options{list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--p-line);border-radius:12px;overflow:hidden;max-height:260px;overflow-y:auto}
+.pu-options li{margin:0;border-top:1px solid var(--p-line)}
+.pu-options li:first-child{border-top:0}
+.app-shell .pu .pu-options button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:11px 15px;font:inherit;cursor:pointer;color:var(--p-ink);min-height:0}
+.app-shell .pu .pu-options button:hover,.app-shell .pu .pu-options button:focus-visible{background:#f3f8f3}
+.pu-options small{display:block;color:var(--p-muted);font-size:12px}
+
+/* .statrow, used inside the order modal. */
+.pu-statrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--p-line)}
+.pu-statrow:last-child{border:0}
+.pu-statrow small,.pu-statrow .sub{display:block;color:var(--p-muted);font-size:12px;margin-top:4px}
+.pu-progress{height:6px;border-radius:6px;background:#eef1ef;overflow:hidden;margin-top:7px;max-width:240px}
+.pu-progress span{display:block;height:100%;background:var(--p-green,#22664f);border-radius:6px}
+
+/* .modal of the HTML. */
+.pu-dialog{--p-green:var(--accent,#22664f);--p-line:var(--line,#d9e2dc);--p-muted:var(--muted,#64756e);--p-ink:var(--ink,#20342d);
+  padding:0;border:0;border-radius:15px;width:min(530px,calc(100% - 28px));max-height:calc(100% - 36px);box-shadow:0 14px 45px #173d3215;color:var(--p-ink);animation:pu-enter .22s ease}
+.pu-dialog.wide{width:min(760px,calc(100% - 28px))}
+.pu-dialog[open]{display:flex;flex-direction:column}
+.pu-dialog::backdrop{background:#122a23a8;backdrop-filter:blur(3px)}
+.app-shell .pu-dialog header{padding:20px 23px;border-bottom:1px solid var(--p-line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}
+.app-shell .pu-dialog header h2{margin:0;font-size:20px}
+.app-shell .pu-dialog header button.pu-close{border:0;background:none;color:var(--p-green);font-size:18px;font-weight:800;cursor:pointer;width:34px;height:34px;border-radius:8px;min-height:0;padding:0}
+.app-shell .pu-dialog header button.pu-close:hover{background:#f3f8f3}
+.pu-dialog-body{padding:23px;line-height:1.6;overflow-y:auto;min-height:0}
+.pu-dialog-body>p:first-child{margin-top:0}
+.app-shell .pu-dialog footer{padding:15px 23px;border-top:1px solid var(--p-line);display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;flex:none}
+.app-shell .pu-dialog footer .spacer{margin-right:auto}
+.app-shell .pu-dialog :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;border:1px solid var(--p-line);border-radius:9px;background:#fff;color:var(--p-ink);font:inherit;font-weight:500;min-height:44px;padding:10px 12px}
+.app-shell .pu-dialog :is(input,select,textarea)[aria-invalid=true]{border-color:var(--danger,#b4232c);box-shadow:inset 0 0 0 1px var(--danger,#b4232c)}
+.app-shell .pu-dialog .pu-formgrid label,.app-shell .pu-dialog .pu-label{display:grid;gap:7px;font-weight:700;font-size:13px;align-content:start}
+.app-shell .pu-dialog .pu-note{background:#edf5ed;border-radius:10px;padding:16px;color:#355c47;line-height:1.6;font-size:13px;margin:16px 0}
+.app-shell .pu-dialog .pu-note.warn{background:#fff5e4;color:#8a5b17}
+.app-shell .pu-dialog .pu-alert{background:#fce9e9;color:var(--danger,#b4232c);border-radius:10px;padding:14px 16px;font-weight:700;margin:0 0 16px}
+.app-shell .pu-dialog .pu-alert.warn{background:#fff5e4;color:#8a5b17}
+.app-shell .pu-dialog details{margin-top:14px;border-top:1px solid var(--p-line);padding-top:12px}
+.app-shell .pu-dialog summary{cursor:pointer;font-weight:800;color:var(--p-green)}
+.app-shell .pu-dialog h3{font-size:15px;margin:22px 0 6px}
+
+/* Receipts in the order history. */
+.pu-receipt{border:1px solid var(--p-line);border-radius:12px;padding:14px 16px;margin-top:10px}
+.pu-receipt header,.app-shell .pu-dialog .pu-receipt header{border:0;padding:0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pu-receipt header small{display:block;color:var(--p-muted);font-size:12px}
+.pu-receipt ul{list-style:none;margin:10px 0 0;padding:0;font-size:13px}
+.pu-receipt li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px dashed var(--p-line)}
+.pu-receipt li span{color:var(--p-muted)}
+
+/* Receiving: scan bar and difference cells. */
+.pu-scan{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end}
+.pu-scan input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pu-diff{display:grid;gap:6px}
+.pu-diff-pair{display:flex;gap:6px}
+.app-shell .pu .pu-diff-pair input:not([type=checkbox]){width:72px;flex:none;text-align:right}
+.pu-diff-pair select{flex:1;min-width:0}
+
+.pu-success{display:flex;gap:14px;align-items:center}
+.pu-success>span{width:42px;height:42px;border-radius:50%;background:#e5f1e5;color:#1b6b3f;display:grid;place-items:center;font-size:20px;font-weight:800;flex:none}
+.pu-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 20px}
+.pu-facts>div{background:#f8faf7;border:1px solid var(--p-line);border-radius:11px;padding:13px 15px}
+.pu-facts dt{color:var(--p-muted);font-size:12px}
+.pu-facts dd{margin:5px 0 0;font-weight:800;font-size:16px;overflow-wrap:anywhere}
+
+/* .toast of the HTML. */
+.pu-toast{position:fixed;bottom:24px;right:24px;background:#173d32;color:#fff;border-radius:10px;padding:15px 20px;z-index:20;box-shadow:0 14px 45px #173d3215;max-width:360px;margin:0;animation:pu-enter .22s ease}
+
+@media (max-width:1180px){
+  .pu-layout{grid-template-columns:minmax(0,1fr)}
+  .pu-side{position:static}
+}
+@media (max-width:1100px){
+  .pu-metrics{gap:9px}
+  .pu-row{grid-template-columns:1fr .8fr .8fr auto}
+}
+@media (max-width:760px){
+  .pu-head{display:block}.pu-head h2{font-size:26px}
+  .pu-head-actions{margin-top:17px;justify-content:stretch}
+  .pu-head-actions .pu-btn{flex:1}
+  .pu-metric{padding:13px}.pu-metric strong{font-size:23px}.pu-metric span{display:none}
+  .pu-filters .pu-search{flex-basis:100%}
+  .app-shell .pu .pu-filters :is(select){flex:1 1 100%}
+  .app-shell .pu .pu-filters :is(input[type=date]){flex:1 1 40%}
+  .app-shell .pu .pu-filters :is(select,input[type=date]){min-width:0}
+  .pu-row{grid-template-columns:1fr 1fr;gap:8px}
+  .pu-row>:first-child{grid-column:1/-1}
+  .pu-row .pu-btn{grid-column:1/-1}
+  .pu-panelhead{padding:17px 16px}.pu-panelbody{padding:16px}
+  .pu-formgrid{grid-template-columns:1fr}
+  .pu-toast{bottom:84px;left:14px;right:14px;max-width:none}
+  .app-shell .pu-dialog footer button.pu-btn{flex:1 1 100%}
+  .app-shell .pu-dialog footer .spacer{margin-right:0}
+  .pu-actions button.pu-btn{flex:1 1 100%}
+  .pu-scan{grid-template-columns:1fr}
+}
+@media (max-width:380px){
+  .pu-metrics{grid-template-columns:1fr 1fr}
+  .pu-metric:last-child{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){.pu,.pu-dialog,.pu-toast{animation:none}.pu button,.pu-dialog button{transition:none}}
+
+/* Choice buttons (the .chip language of the HTML, as in the quick creation). */
+.app-shell .pu button.pu-choice{display:grid;gap:3px;text-align:left;background:#fff;color:var(--p-ink);border:1px solid var(--p-line);border-radius:12px;padding:13px 15px;min-height:0;width:auto;font:inherit;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+.app-shell .pu button.pu-choice:hover:not(:disabled){background:#f3f8f3;border-color:#b1ceba;transform:translateY(-1px)}
+.app-shell .pu button.pu-choice[aria-checked=true]{background:#e4f1e8;border-color:#a4cbb7;box-shadow:inset 0 0 0 1px #a4cbb7}
+.pu-choice b{font-size:14px}
+.pu-choice small{color:var(--p-muted);font-size:12px;font-weight:500}
+.pu-row-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:760px){.pu-row .pu-row-actions{grid-column:1/-1}.pu-row-actions .pu-btn{flex:1}}
+.app-shell .pu .pu-table select.pu-condition{min-width:190px}
+@container (max-width:640px){.app-shell .pu .pu-table select.pu-condition{min-width:0}}

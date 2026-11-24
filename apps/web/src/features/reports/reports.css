@@ -1,0 +1,64 @@
+/* Reportes. .head, .metrics/.metric, .grid2, .card/.panelbody, .statrow, .note and .hint
+   come from retail_mockup_final.html through the shared pu- pieces; the period filter
+   reuses .filters, .search and the chips of the same system. */
+.sales-report h3{font-size:18px;margin:0 0 3px}
+.sales-report .pu-panelbody>h3{margin-bottom:10px}
+.sr-filters{margin-bottom:22px}
+.sr-filters .pu-filters{border-bottom:0;align-items:center}
+.sr-periods{display:flex;gap:7px;flex-wrap:wrap}
+.sr-date{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--p-muted)}
+.sr-day{margin:0;font-weight:700;flex:1}
+.sr-inline{margin:0 17px 17px}
+/* .grid2 of the HTML. */
+.sr-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.8fr);gap:22px;margin-bottom:22px;align-items:start}
+.sr-grid.even{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sr-block{margin-bottom:22px}
+.sr-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.sr-title a{font-size:13px;font-weight:800;color:var(--p-green);text-decoration:none}
+.sr-title a:hover{text-decoration:underline}
+.sr-list{list-style:none;margin:0 0 12px;padding:0}
+.sr-list .pu-statrow{margin:0}
+.sr-list .pu-statrow>div{min-width:0}
+.sr-list .pu-statrow b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.sr-amount{text-align:right}
+.sr-category>div{flex:1}
+.sr-category small{color:var(--p-muted);font-weight:600}
+.sr-empty{padding:30px 10px}
+.sr-pager{margin:0 -22px -22px}
+.pu-card>.sr-pager{margin:0}
+.sales-report .pu-progress{display:block}
+.sales-report .pu-table td>b{display:block}
+.commercial-shell .feature-panel>.pu~.report-links{border:0;padding:0}
+@media (max-width:1180px){
+  .sr-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .sr-grid.even{grid-template-columns:minmax(0,1fr)}
+  .sr-date{flex:1 1 40%}
+  .sr-filters .pu-filters>.pu-btn{flex:1 1 100%}
+  .sr-pager{margin:0 -16px -16px}
+  .sr-amount .sub{display:none}
+}
+.sr-filters .pu-search{flex:1 1 240px}
+.sr-category .pu-progress{max-width:none}
+/* Daily totals fit a half card: keep it a table down to phone width. */
+.sr-daily .pu-table th,.sr-daily .pu-table td{padding:12px 16px}
+/* Amounts in .metric use font-size:21px in the HTML. */
+.sales-report .pu-metric strong.sr-money{font-size:21px;font-variant-numeric:tabular-nums}
+.sr-daily .pu-table-wrap{container-type:normal}
+@media (max-width:420px){
+  .sales-report .pu-metric strong.sr-money{font-size:18px;letter-spacing:-.6px}
+}
+.sr-list .pu-statrow>div:first-child{flex:1}
+.sr-list .pu-statrow>:last-child{flex:none}
+@media (max-width:900px){
+  .sr-grid.even{grid-template-columns:minmax(0,1fr)}
+}
+/* Real amounts are longer than the HTML sample: two columns like the HTML under 380px. */
+@media (max-width:420px){
+  .sales-report .pu-metrics{grid-template-columns:1fr 1fr}
+  .sales-report .pu-metric:last-child{grid-column:1/-1}
+  .sales-report .pu-metric strong.sr-money{font-size:21px;letter-spacing:-.6px}
+}
+.sales-report .pu-panelbody>.pu-hint+.pu-hint,.sales-report .pu-panelbody>.sr-list+.pu-hint{margin-top:8px}
+.sales-report .pu-panelbody>.pu-hint:first-of-type{margin-bottom:8px}

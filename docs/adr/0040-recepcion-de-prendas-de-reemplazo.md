@@ -1,0 +1,7 @@
+# ADR 0040 — Recepción de prendas de reemplazo
+
+Desde el historial del cambio se pueden recibir todas o parte de las prendas que se entregaron como reemplazo. El operador indica motivo y destino vendible o de cuarentena en la sucursal de la venta. La referencia de cada unidad toma el precio registrado cuando se entregó como reemplazo.
+
+Cada recepción queda vinculada a su cambio. Las cantidades disponibles se calculan por variante y cambio de origen. El registro y el ingreso de stock se confirman juntos bajo el bloqueo de la venta. El reintento recupera la recepción original. El historial muestra las unidades devueltas del cambio y, cuando ambos registros aparecen en la misma página, permite ir al cambio de origen.
+
+La recepción física opera con caja cerrada. El saldo del fiado, los cobros y el ticket conservan sus valores. La recepción puede resolverse con [otro cambio por el mismo importe](0041-otro-cambio-por-el-mismo-importe.md). Si las prendas nuevas cuestan más, se puede [cobrar la diferencia](0042-otro-cambio-con-diferencia-a-cobrar.md). En ventas pagadas, también se puede [reintegrar la diferencia en un cambio de menor valor](0043-otro-cambio-con-diferencia-a-reintegrar.md). En fiados se puede [compensar la diferencia de un nuevo cambio](0044-otro-cambio-de-menor-valor-en-fiados.md). El reintegro directo y la compensación sin un nuevo cambio se detallan en el [ADR 0045](0045-devolucion-directa-de-un-reemplazo.md).

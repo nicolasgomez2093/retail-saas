@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+*.log
+.DS_Store
+*.swp
+.idea/
+.vscode/

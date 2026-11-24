@@ -1,0 +1,7 @@
+# ADR 0004 — Administración de usuarios por sucursal
+
+El propietario administra personal en todo su comercio y puede crear encargados, cajeros y operadores. El encargado puede crear cajeros y operadores en sus sucursales activas asignadas. Para ver o modificar una cuenta existente como encargado, la cuenta debe tener por lo menos una asignación y todas sus sucursales y roles deben estar dentro del alcance del encargado. Una cuenta compartida con una sucursal ajena queda bajo administración del propietario porque el nombre, estado y sesiones tienen alcance de cuenta.
+
+La API permite editar nombre, estado y asignaciones de sucursal. La gestión de propietarios y el restablecimiento de contraseñas requieren sus propios flujos. El cambio de roles existentes y la configuración de sucursales se detallan en ADR 0005. Las cuentas conservan los roles y las asignaciones al desactivarse. Una reactivación requiere volver a iniciar sesión. Las altas respetan la unicidad del correo dentro del comercio.
+
+Las escrituras toman un bloqueo de fila por comercio antes de resolver permisos y alcance. La auditoría, los cambios y la revocación de sesiones se confirman juntos. La emisión de sesiones bloquea la cuenta durante el INSERT para coordinarse con la desactivación. Los eventos registran actor, cuenta y valores antes y después, con exclusión de contraseñas y hashes. Los futuros escritores de cuentas, permisos o asignaciones deben tomar el mismo bloqueo antes de mutar los datos.
