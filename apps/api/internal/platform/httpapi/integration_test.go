@@ -1919,7 +1919,13 @@ func TestIdentityAcrossTenants(t *testing.T) {
 	if !strings.Contains(firstCollection.Body.String(), `"balanceAfter":"22.75"`) {
 		t.Fatalf("saldo después del abono en efectivo: %s", firstCollection.Body)
 	}
+	if got := request("GET", receivablesPath+cashQuery+"&status=partial", "", "", manager, 200).Body.String(); !strings.Contains(got, fullDebtID) {
+		t.Fatalf("un fiado con un abono debe figurar en «Con abonos»: %s", got)
+	}
 	lastCollection := expect(keyedCash(fullDebtPath, collectionBody(cashierCollect, "qr", "22.75"), "collect-settle", cashier), 201)
+	if got := request("GET", receivablesPath+cashQuery+"&status=partial", "", "", manager, 200).Body.String(); strings.Contains(got, fullDebtID) {
+		t.Fatalf("un fiado saldado ya no tiene abonos pendientes: %s", got)
+	}
 	recent := readReceivablesPage(cashier, customerFilter+"&status=pending&limit=1").RecentPayments
 	if len(recent) != 2 || recent[0].ID != readID(lastCollection) || recent[1].ID != firstCollectionID ||
 		recent[0].SaleID != fullCreditID || recent[0].CustomerName != "Nombre actualizado" ||
@@ -4289,6 +4295,59 @@ func TestIdentityAcrossTenants(t *testing.T) {
 				t.Fatalf("medios de la venta en el historial: %+v", sale)
 			}
 		}
+
+		// Filtros de reportes: la venta en efectivo aparece con su medio y desaparece con otro.
+		salesReport := "/api/v1/reports/sales?store_id=" + created.StoreID
+		if got := request("GET", salesReport+"&method=cash&limit=100", "", "", manager, 200).Body.String(); !strings.Contains(got, saleID) {
+			t.Fatalf("el filtro por efectivo debe incluir la venta: %s", got)
+		}
+		if got := request("GET", salesReport+"&method=qr&limit=100", "", "", manager, 200).Body.String(); strings.Contains(got, saleID) {
+			t.Fatalf("el filtro por QR no debe incluir una venta en efectivo: %s", got)
+		}
+		if got := request("GET", salesPath+"?store_id="+created.StoreID+"&method=on_credit&limit=100", "", "", manager, 200).Body.String(); strings.Contains(got, saleID) {
+			t.Fatalf("el historial fiado no debe incluir una venta en efectivo: %s", got)
+		}
+		request("GET", salesReport+"&method=cheque", "", "", manager, 400)
+		request("GET", salesPath+"?store_id="+created.StoreID+"&method=cheque", "", "", manager, 400)
+
+		// Cobros: los dos reintegros en efectivo salen como dinero devuelto, con signo negativo.
+		collectionsPath := "/api/v1/reports/collections?store_id=" + created.StoreID
+		var collections sales.CollectionsReport
+		if err := json.Unmarshal(request("GET", collectionsPath+"&method=cash&limit=100", "", "", manager, 200).Body.Bytes(), &collections); err != nil {
+			t.Fatal(err)
+		}
+		var refunds int64
+		for _, entry := range collections.Items {
+			if entry.Method != "cash" {
+				t.Fatalf("el filtro por medio debe dejar solo efectivo: %+v", entry)
+			}
+			if entry.Source == "refund" && entry.SaleID != nil && *entry.SaleID == saleID {
+				if entry.Amount != "-"+price.Amount {
+					t.Fatalf("el reintegro debe restar el importe devuelto: %+v", entry)
+				}
+				refunds++
+			}
+		}
+		if refunds != 2 || len(collections.Methods) != 1 || collections.Methods[0].Method != "cash" ||
+			cents(collections.Methods[0].Refunded) < 2*cents(price.Amount) {
+			t.Fatalf("cobros en efectivo con dos reintegros: %+v", collections)
+		}
+		request("GET", collectionsPath+"&method=on_credit", "", "", manager, 400)
+		request("GET", collectionsPath+"&from_date=2026-02-30", "", "", manager, 400)
+		request("GET", collectionsPath, "", "", second, 404)
+		if got := request("GET", collectionsPath+"&from_date=2000-01-01&to_date=2000-01-31", "", "", manager, 200).Body.String(); !strings.Contains(got, `"methods":[]`) || !strings.Contains(got, `"items":[]`) {
+			t.Fatalf("período sin cobros: %s", got)
+		}
+
+		// Compras: el reporte exige permiso de compras y no mezcla comercios.
+		purchasesReport := "/api/v1/reports/purchases?store_id=" + created.StoreID
+		if got := request("GET", purchasesReport+"&from_date=2000-01-01&to_date=2000-01-31", "", "", manager, 200).Body.String(); !strings.Contains(got, `"receiptCount":0`) || !strings.Contains(got, `"knownCost":"0.00"`) {
+			t.Fatalf("período sin recepciones: %s", got)
+		}
+		request("GET", purchasesReport, "", "", second, 404)
+		request("GET", purchasesReport+"&from_date=2026-12-02&to_date=2026-12-01", "", "", manager, 400)
+		request("GET", "/api/v1/receivables?store_id="+created.StoreID+"&status=partial", "", "", manager, 200)
+		request("GET", "/api/v1/receivables?store_id="+created.StoreID+"&status=todos", "", "", manager, 400)
 	})
 
 	t.Run("existencias por sucursal", func(t *testing.T) {

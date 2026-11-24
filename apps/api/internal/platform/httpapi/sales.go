@@ -28,6 +28,18 @@ func registerSales(router *gin.RouterGroup, db *pgxpool.Pool, authService *auth.
 		result, err := svc.SalesMarginReport(c.Request.Context(), actor, c.Query("store_id"), filter)
 		respondSale(c, http.StatusOK, result, err)
 	}))
+	router.GET("/reports/collections", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		limit, limitErr := strconv.Atoi(c.DefaultQuery("limit", "25"))
+		offset, offsetErr := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		if limitErr != nil || offsetErr != nil {
+			fail(c, 400, "invalid_request", sales.ErrReportInvalid.Error())
+			return
+		}
+		result, err := svc.Collections(c.Request.Context(), actor, c.Query("store_id"), sales.CollectionsFilter{
+			FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Method: c.Query("method"), Limit: limit, Offset: offset,
+		})
+		respondSale(c, http.StatusOK, result, err)
+	}))
 	router.GET("/reports/sales/csv", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
 		salesCSV(c, "margen-ventas.csv", func(output io.Writer) error {
 			return svc.ExportSalesMarginCSV(c.Request.Context(), actor, c.Query("store_id"), salesMarginFilter(c), output)
@@ -80,7 +92,7 @@ func registerSales(router *gin.RouterGroup, db *pgxpool.Pool, authService *auth.
 			return
 		}
 		result, err := svc.History(c.Request.Context(), actor, c.Query("store_id"), sales.HistoryFilter{
-			Number: c.Query("number"), Query: c.Query("q"), FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Limit: limit, Offset: offset,
+			Number: c.Query("number"), Query: c.Query("q"), FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Method: c.Query("method"), Limit: limit, Offset: offset,
 		})
 		respondSale(c, http.StatusOK, result, err)
 	}))
@@ -157,7 +169,7 @@ func salesCSV(c *gin.Context, filename string, export func(io.Writer) error) {
 func salesMarginFilter(c *gin.Context) sales.SalesMarginFilter {
 	return sales.SalesMarginFilter{
 		From: c.Query("from"), To: c.Query("to"),
-		FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Query: c.Query("q"),
+		FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Query: c.Query("q"), Method: c.Query("method"),
 	}
 }
 

@@ -66,10 +66,7 @@ func (s Service) ExportReceivablesCSV(ctx context.Context, actor auth.Identity, 
 			"importe_fiado_original", "saldo_pendiente"}); err != nil {
 			return err
 		}
-		label := "pendiente"
-		if filter.Status == "settled" {
-			label = "saldado"
-		}
+		label := map[string]string{"pending": "pendiente", "partial": "pendiente_con_abonos", "settled": "saldado"}[filter.Status]
 		for rows.Next() {
 			row, err := scanReceivable(rows)
 			if err != nil {

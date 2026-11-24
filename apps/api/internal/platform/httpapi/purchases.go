@@ -28,6 +28,18 @@ func registerPurchases(router *gin.RouterGroup, db *pgxpool.Pool, authService *a
 		result, err := service.List(c.Request.Context(), actor, c.Query("store_id"), filter)
 		respondPurchase(c, http.StatusOK, result, err)
 	}))
+	router.GET("/reports/purchases", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		limit, limitErr := strconv.Atoi(c.DefaultQuery("limit", "20"))
+		offset, offsetErr := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		if limitErr != nil || offsetErr != nil {
+			respondPurchase(c, 0, nil, purchases.ErrInvalid)
+			return
+		}
+		result, err := service.Report(c.Request.Context(), actor, c.Query("store_id"), purchases.ReportFilter{
+			FromDate: c.Query("from_date"), ToDate: c.Query("to_date"), Limit: limit, Offset: offset,
+		})
+		respondPurchase(c, http.StatusOK, result, err)
+	}))
 	router.POST("/purchase-orders", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
 		var input purchases.OrderInput
 		if readAdminJSON(c, &input) {

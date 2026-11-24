@@ -111,7 +111,7 @@ func (s Service) Receivables(ctx context.Context, actor auth.Identity, storeID s
 }
 
 func (s Service) readReceivables(ctx context.Context, actor auth.Identity, storeID string, filter ReceivableFilter, limit *int, offset int, page *ReceivablePage, read func(pgx.Rows) error) error {
-	if !validID(storeID) || (filter.Status != "pending" && filter.Status != "settled") ||
+	if !validID(storeID) || (filter.Status != "pending" && filter.Status != "partial" && filter.Status != "settled") ||
 		(filter.CustomerID != "" && !validID(filter.CustomerID)) {
 		return ErrInvalid
 	}
@@ -134,8 +134,11 @@ func (s Service) readReceivables(ctx context.Context, actor auth.Identity, store
 		}
 		rows, err := tx.Query(ctx, `SELECT r.id,r.customer_id,r.customer_name_snapshot,r.original_amount::text,
 			s.id,s.sale_number::text,s.currency,r.outstanding_amount::text,s.created_at`+receivableScope+`
-			AND (r.outstanding_amount>0)=$7
-			ORDER BY s.sale_number DESC LIMIT $8 OFFSET $9`, append(args, filter.Status == "pending", limit, offset)...)
+			AND CASE $7::text WHEN 'settled' THEN r.outstanding_amount=0
+				-- partial: still owed, with payments or returns already credited.
+				WHEN 'partial' THEN r.outstanding_amount>0 AND r.outstanding_amount<r.original_amount
+				ELSE r.outstanding_amount>0 END
+			ORDER BY s.sale_number DESC LIMIT $8 OFFSET $9`, append(args, filter.Status, limit, offset)...)
 		if err != nil {
 			return err
 		}

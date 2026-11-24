@@ -34,8 +34,9 @@ type TopSoldProduct struct {
 	NetSales      string `json:"netSales"`
 }
 
-// commercialLines uses the same arguments as salesMarginScope. Each operation is filtered by its own date.
-const commercialLines = `WITH lines AS (
+// commercialLines uses the same arguments as salesMarginScope. Each operation is filtered by its own date;
+// the method filter applies to the original sale, so its returns and exchanges follow it.
+var commercialLines = `WITH lines AS (
 		SELECT 'sale' AS kind,s.id AS sale_id,s.id AS operation_id,s.currency,si.variant_id,si.product_name,si.sku,
 			si.quantity AS units,si.unit_price*si.quantity AS amount,s.created_at AS happened_at
 		FROM sales s JOIN cash_sessions cs ON (cs.tenant_id,cs.id)=(s.tenant_id,s.cash_session_id)
@@ -64,6 +65,7 @@ const commercialLines = `WITH lines AS (
 		AND ($7::text='' OR (happened_at AT TIME ZONE $9)::date >= NULLIF($7,'')::date)
 		AND ($8::text='' OR (happened_at AT TIME ZONE $9)::date <= NULLIF($8,'')::date)
 		AND ($10::text='' OR strpos(lower(sku),lower($10))>0 OR strpos(lower(product_name),lower($10))>0)
+		AND ($11::text='' OR sale_id IN (SELECT s.id FROM sales s WHERE s.tenant_id=$1 AND s.store_id=$2 AND ` + salePaidWith("$11") + `))
 	)`
 
 func summarizeSalesActivity(ctx context.Context, tx pgx.Tx, args []any) ([]SalesActivity, error) {

@@ -221,7 +221,8 @@ export type SaleCredit = { id: string; customerId: string; customerName: string;
 export type Receivable = SaleCredit & {
   saleId: string; saleNumber: string; currency: string; outstandingAmount: string; createdAt: string;
 };
-export type ReceivableStatus = 'pending' | 'settled';
+/** partial: still owed, with payments or returns already credited. */
+export type ReceivableStatus = 'pending' | 'partial' | 'settled';
 export type ReceivableFilters = { status: ReceivableStatus; query: string; customerId?: string };
 export type ReceivableSummary = {
   currency: string; pendingCount: number; settledCount: number; outstanding: string; collected: string; debtCredits: string;
@@ -300,7 +301,9 @@ export type SaleSummary = Pick<Sale, 'id' | 'number' | 'total' | 'currency' | 'c
   /** Methods charged at checkout, including a reservation deposit. */
   payments?: SalePaymentMethod[];
 };
-export type SaleHistoryFilters = { number: string; query: string; fromDate: string; toDate: string };
+export type SaleHistoryFilters = { number: string; query: string; fromDate: string; toDate: string; method?: SaleMethodFilter };
+/** A checkout method, or on_credit for fiado sales; empty keeps every sale. */
+export type SaleMethodFilter = '' | SalePaymentMethod | 'on_credit';
 /** One complete exchange or return, settled in a single server transaction. */
 export type ReturnOperationInput = {
   storeId: string; reason: string; items: ReturnQuantity[];
@@ -339,7 +342,29 @@ export type SalesMarginPage = {
   paymentTotals: SalesPaymentTotal[];
   dailyTotals: SalesDailyTotal[]; categoryTotals: SalesCategoryTotal[]; activity: SalesActivity[]; topProducts: TopSoldProduct[];
 };
-export type SalesMarginFilters = { fromDate: string; toDate: string; query: string };
+export type SalesMarginFilters = { fromDate: string; toDate: string; query: string; method?: SaleMethodFilter };
+export type CollectionSource = 'sale' | 'deposit' | 'receivable' | 'exchange' | 'refund';
+/** Money received or refunded in the period, on the day it moved and by its real method. */
+export type CollectionsReport = {
+  timezone: string; hasMore: boolean;
+  methods: { currency: string; method: SalePaymentMethod; collected: string; refunded: string; net: string; count: number }[];
+  sources: { currency: string; source: CollectionSource; amount: string; count: number }[];
+  daily: { date: string; currency: string; collected: string; refunded: string }[];
+  items: { source: CollectionSource; method: SalePaymentMethod; currency: string; amount: string; happenedAt: string;
+    saleId: string | null; saleNumber: string | null; customer: string | null }[];
+};
+export type CollectionsFilters = { fromDate: string; toDate: string; method: '' | SalePaymentMethod };
+/** Goods received in the period, valued at the cost captured on each receipt. */
+export type PurchasesReport = {
+  timezone: string; currency: string; hasMore: boolean;
+  summary: { receiptCount: number; receivedOrders: number; units: number; unitsWithCost: number; rejectedUnits: number;
+    knownCost: string; placedOrders: number; orderedUnits: number; pendingOrders: number };
+  daily: { date: string; receiptCount: number; units: number; knownCost: string }[];
+  suppliers: { supplierId: string; supplier: string; receiptCount: number; units: number; knownCost: string }[];
+  products: { productId: string; product: string; units: number; knownCost: string }[];
+  items: { receiptId: string; orderId: string; orderNumber: number | null; supplier: string; locationName: string; receivedAt: string;
+    units: number; rejectedUnits: number; knownCost: string; unitsWithoutCost: number }[];
+};
 export type SaleHistoryPage = { items: SaleSummary[]; hasMore: boolean };
 export type SaleTicket = {
   sale: Sale; merchantName: string; storeCode: string; storeName: string; storeAddress: string; timezone: string;
@@ -387,12 +412,13 @@ function imagesPath(productId: string, photoId?: string) {
     (photoId ? '/' + encodeURIComponent(photoId) : '');
 }
 
-function salesMarginParams(storeId: string, { fromDate, toDate, query }: SalesMarginFilters) {
+function salesMarginParams(storeId: string, { fromDate, toDate, query, method }: SalesMarginFilters) {
   return new URLSearchParams({
     store_id: storeId,
     ...(fromDate ? { from_date: fromDate } : {}),
     ...(toDate ? { to_date: toDate } : {}),
     ...(query ? { q: query } : {}),
+    ...(method ? { method } : {}),
   });
 }
 
@@ -633,7 +659,16 @@ export const api = {
   ),
   saleHistory: (storeId: string, number: string, offset: number, limit = 25, filters?: Omit<SaleHistoryFilters, 'number'>) => request<SaleHistoryPage>(
     '/sales?' + new URLSearchParams({ store_id: storeId, number, offset: String(offset), limit: String(limit),
-      ...(filters ? { q: filters.query, from_date: filters.fromDate, to_date: filters.toDate } : {}) }),
+      ...(filters ? { q: filters.query, from_date: filters.fromDate, to_date: filters.toDate } : {}),
+      ...(filters?.method ? { method: filters.method } : {}) }),
+  ),
+  collectionsReport: (storeId: string, limit: number, offset: number, filters: CollectionsFilters) => request<CollectionsReport>(
+    '/reports/collections?' + new URLSearchParams({ store_id: storeId, from_date: filters.fromDate, to_date: filters.toDate,
+      ...(filters.method ? { method: filters.method } : {}), limit: String(limit), offset: String(offset) }),
+  ),
+  purchasesReport: (storeId: string, limit: number, offset: number, filters: { fromDate: string; toDate: string }) => request<PurchasesReport>(
+    '/reports/purchases?' + new URLSearchParams({ store_id: storeId, from_date: filters.fromDate, to_date: filters.toDate,
+      limit: String(limit), offset: String(offset) }),
   ),
   previewReturnOperation: (saleId: string, input: ReturnOperationInput) => request<ReturnPreview>(
     '/sales/' + encodeURIComponent(saleId) + '/return-operations/preview', json('POST', input)),

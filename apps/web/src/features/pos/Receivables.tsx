@@ -1,11 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, type CashRegisters, type Receivable, type ReceivablePage, type ReceivableStatus } from '../../shared/api/client';
 
+import '../purchases/purchases.css';
+import './customers.css';
 import { CustomerPicker } from './CustomerPicker';
+import { posPrice } from './priceDisplay';
 import { ReceivableCollections } from './ReceivableCollections';
 import { paymentLabels } from './SalePayments';
 
 const pageSize = 25;
+const money = (currency: string, value: string) => currency + ' ' + posPrice(value);
 
 export function Receivables({ active, showAccounts, storeId, revision, ticketBusy, registers, disabled, onTicket, onPending, onCollected }: {
   active: boolean; showAccounts: boolean; storeId: string; revision: number; ticketBusy: boolean; registers: CashRegisters; disabled: boolean;
@@ -78,13 +82,9 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
     dateStyle: 'short', timeStyle: 'short', timeZone: registers.timezone,
   });
 
-  return <div className="customers-view">
-    <nav className="stock-nav" aria-label="Secciones de Clientes">
-      <a href="#/clientes" aria-current={!showAccounts ? 'page' : undefined}>Directorio</a>
-      <a href="#/finanzas/fiados" aria-current={showAccounts ? 'page' : undefined}>Cuentas corrientes</a>
-    </nav>
+  return <div className="customers-view pu">
     <div hidden={showAccounts} className="customers-directory-view">
-      <h2>Directorio de clientes</h2>
+      <h2 className="pos-sr-only">Directorio de clientes</h2>
       <CustomerPicker storeId={storeId} directoryActive={active && !showAccounts} directory
         disabled={locked || disabled} selection={null} label="Directorio"
         onSelect={(person) => {
@@ -108,7 +108,7 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
           if (person) viewCustomer(person.id, person.name);
         }} />
     </details>
-    <div className="customers-filters">
+    <div className="customers-filters pu-card">
       <form className="inventory-form" aria-label="Buscar fiados" onSubmit={search}
         onReset={(event) => {
           event.preventDefault();
@@ -124,11 +124,13 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
       </form>
       <label>Estado del fiado
         <select disabled={locked} value={status} onChange={(event) => {
-          setStatus(event.target.value === 'settled' ? 'settled' : 'pending');
+          const next = event.target.value;
+          setStatus(next === 'settled' || next === 'partial' ? next : 'pending');
           setOffset(0);
           setSelected(null);
         }}>
           <option value="pending">Pendientes</option>
+          <option value="partial">Con abonos</option>
           <option value="settled">Saldados</option>
         </select>
       </label>
@@ -145,33 +147,33 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
     {current?.page && (current.page.summary.length > 0 || current.page.recentPayments.length > 0) && <details className="customers-report">
       <summary>{query ? 'Resumen de la búsqueda' : 'Resumen y últimos abonos'}</summary>
       {current.page.summary.map((total) => <div key={total.currency}><dl className="customers-totals">
-        <dt>Saldo pendiente</dt><dd>{total.currency} {total.outstanding.replace('.', ',')}</dd>
-        <dt>Abonos registrados</dt><dd>{total.currency} {total.collected.replace('.', ',')}</dd>
-        <dt>Compensaciones de deuda</dt><dd>{total.currency} {total.debtCredits.replace('.', ',')}</dd>
+        <dt>Saldo pendiente</dt><dd>{money(total.currency, total.outstanding)}</dd>
+        <dt>Abonos registrados</dt><dd>{money(total.currency, total.collected)}</dd>
+        <dt>Compensaciones de deuda</dt><dd>{money(total.currency, total.debtCredits)}</dd>
         <dt>Fiados pendientes</dt><dd>{total.pendingCount.toLocaleString('es-AR')}</dd>
         <dt>Fiados saldados</dt><dd>{total.settledCount.toLocaleString('es-AR')}</dd>
       </dl>
-        {!customer && total.topDebtors.length > 0 && <div className="inventory-table"><table>
+        {!customer && total.topDebtors.length > 0 && <div className="inventory-table pu-table-wrap"><table className="pu-table">
           <caption>Hasta 10 clientes con mayor saldo pendiente ({total.currency})</caption>
           <thead><tr><th scope="col">Cliente</th><th scope="col">Fiados pendientes</th><th scope="col">Saldo pendiente</th></tr></thead>
           <tbody>{total.topDebtors.map((customer) => <tr key={customer.customerId}>
             <th scope="row"><button type="button" className="catalog-link" disabled={locked}
               onClick={() => viewCustomer(customer.customerId, customer.customerName)}>{customer.customerName}</button></th>
             <td>{customer.pendingCount.toLocaleString('es-AR')}</td>
-            <td>{total.currency} {customer.outstanding.replace('.', ',')}</td>
+            <td className="num">{money(total.currency, customer.outstanding)}</td>
           </tr>)}</tbody>
         </table></div>}
-        {total.paymentsByMethod.length > 0 && <div className="inventory-table"><table>
+        {total.paymentsByMethod.length > 0 && <div className="inventory-table pu-table-wrap"><table className="pu-table">
           <caption>Abonos por medio de pago ({total.currency})</caption>
           <thead><tr><th scope="col">Medio</th><th scope="col">Abonos</th><th scope="col">Importe</th></tr></thead>
           <tbody>{total.paymentsByMethod.map((payment) => <tr key={payment.method}>
             <th scope="row">{paymentLabels[payment.method]}</th>
             <td>{payment.paymentCount.toLocaleString('es-AR')}</td>
-            <td>{total.currency} {payment.amount.replace('.', ',')}</td>
+            <td className="num">{money(total.currency, payment.amount)}</td>
           </tr>)}</tbody>
         </table></div>}
       </div>)}
-    {current?.page && current.page.recentPayments.length > 0 && <div className="inventory-table"><table>
+    {current?.page && current.page.recentPayments.length > 0 && <div className="inventory-table pu-table-wrap"><table className="pu-table">
       <caption>Últimos 10 abonos</caption>
       <thead><tr><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Venta</th>
         <th scope="col">Medio</th><th scope="col">Importe</th></tr></thead>
@@ -182,7 +184,7 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
           Ver ticket de la venta {payment.saleNumber}
         </button></td>
         <td>{paymentLabels[payment.method]}</td>
-        <td>{payment.currency} {payment.amount.replace('.', ',')}</td>
+        <td className="num">{money(payment.currency, payment.amount)}</td>
       </tr>)}</tbody>
     </table></div>}
     </details>}
@@ -193,22 +195,30 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
       <button type="button" onClick={() => setRetry((value) => value + 1)}>Reintentar</button>
     </div>}
     {current?.page?.items.length === 0 && <p>{query || customer ? 'No hay fiados que coincidan con los filtros.'
-      : status === 'pending' ? 'No hay fiados pendientes.' : 'No hay fiados saldados.'}</p>}
-    {current?.page && current.page.items.length > 0 && <ul className="catalog-items customers-list">
-      {current.page.items.map((item) => <li key={item.id}>
-        <p><strong>{item.customerName}</strong><small>{status === 'pending'
-          ? 'Pendiente ' + item.currency + ' ' + item.outstandingAmount.replace('.', ',')
-          : 'Saldado'}</small></p>
-        <div className="actions">
-          <button type="button" className="catalog-link" disabled={ticketBusy} onClick={(event) => onTicket(item.saleId, event.currentTarget)}>
-            Ticket<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
-          </button>
-          <button type="button" className="catalog-link" disabled={locked || disabled} onClick={() => setSelected(item)}>
-            Ver abonos<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
-          </button>
-        </div>
-      </li>)}
-    </ul>}
+      : status === 'pending' ? 'No hay fiados pendientes.' : status === 'partial' ? 'No hay fiados con abonos pendientes de saldar.' : 'No hay fiados saldados.'}</p>}
+    {current?.page && current.page.items.length > 0 && <div className="pu-card customers-table"><div className="pu-table-wrap"><table className="pu-table">
+      <thead><tr><th scope="col">Cliente</th><th scope="col">Venta</th><th scope="col" className="num">Fiado</th>
+        <th scope="col" className="num">Saldo</th><th scope="col">Estado</th><th scope="col"><span className="pos-sr-only">Acciones</span></th></tr></thead>
+      <tbody>{current.page.items.map((item) => {
+        const settled = Number(item.outstandingAmount) === 0;
+        const partial = !settled && item.outstandingAmount !== item.originalAmount;
+        return <tr key={item.id} aria-current={selected?.id === item.id || undefined}>
+          <th scope="row">{item.customerName}</th>
+          <td>V-{item.saleNumber}<small><time dateTime={item.createdAt}>{dates.format(new Date(item.createdAt))}</time></small></td>
+          <td className="num" data-label="Fiado">{money(item.currency, item.originalAmount)}</td>
+          <td className="num" data-label="Saldo"><b>{money(item.currency, item.outstandingAmount)}</b></td>
+          <td data-label="Estado">{settled ? <span className="pu-pill">Saldado</span>
+            : partial ? <span className="pu-pill warning">Con abonos</span> : <span className="pu-pill danger">Pendiente</span>}</td>
+          <td className="pu-cell-actions">
+            <button type="button" className="pu-btn" disabled={ticketBusy} onClick={(event) => onTicket(item.saleId, event.currentTarget)}>
+              Ticket<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
+            </button>
+            <button type="button" className="pu-btn primary" disabled={locked || disabled} onClick={() => setSelected(item)}>
+              {settled ? 'Ver abonos' : 'Abonos'}<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
+            </button>
+          </td>
+        </tr>; })}</tbody>
+    </table></div></div>}
     {(offset > 0 || current?.page?.hasMore) && <nav className="actions" aria-label="Páginas de fiados">
       <button type="button" disabled={!current || offset === 0 || locked} onClick={() => setOffset(offset - pageSize)}>Anterior</button>
       <button type="button" disabled={!current?.page?.hasMore || locked} onClick={() => setOffset(offset + pageSize)}>Siguiente</button>

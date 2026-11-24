@@ -19,7 +19,27 @@ type SalesMarginFilter struct {
 	From, To         string
 	FromDate, ToDate string
 	Query            string
-	Limit, Offset    int
+	// Method keeps the sales charged, at least in part, with it; on_credit keeps fiado sales.
+	Method        string
+	Limit, Offset int
+}
+
+// validSaleMethod accepts the checkout methods and on_credit; empty means every sale.
+func validSaleMethod(method string) bool {
+	switch method {
+	case "", "cash", "debit", "credit", "transfer", "qr", "on_credit":
+		return true
+	}
+	return false
+}
+
+// salePaidWith filters the sale aliased s by the method in param, reservation deposit included.
+func salePaidWith(param string) string {
+	return `(` + param + `::text='' OR (` + param + `='on_credit' AND EXISTS (SELECT 1 FROM receivables pr
+		WHERE (pr.tenant_id,pr.store_id,pr.sale_id)=(s.tenant_id,s.store_id,s.id)))
+	OR EXISTS (SELECT 1 FROM sale_payments pp WHERE (pp.tenant_id,pp.sale_id)=(s.tenant_id,s.id) AND pp.method=` + param + ` AND pp.amount>0)
+	OR EXISTS (SELECT 1 FROM reservations pb JOIN reservation_deposits pd ON (pd.tenant_id,pd.store_id,pd.reservation_id)=(pb.tenant_id,pb.store_id,pb.id)
+		WHERE (pb.tenant_id,pb.store_id,pb.sale_id)=(s.tenant_id,s.store_id,s.id) AND pd.method=` + param + `))`
 }
 
 type SalesMarginLine struct {
@@ -96,7 +116,7 @@ type SalesMarginSummary struct {
 	GrossMarginWithCost *string `json:"grossMarginPercentWithCost"`
 }
 
-const salesMarginScope = `
+var salesMarginScope = `
 	FROM sales s JOIN cash_sessions cs ON (cs.tenant_id,cs.id)=(s.tenant_id,s.cash_session_id)
 	JOIN sale_items si ON (si.tenant_id,si.sale_id)=(s.tenant_id,s.id)
 	WHERE s.tenant_id=$1 AND s.store_id=$2 AND ($3 OR cs.opened_by=$4)
@@ -104,7 +124,8 @@ const salesMarginScope = `
 	AND ($6::timestamptz IS NULL OR s.created_at < $6)
 	AND ($7::text='' OR (s.created_at AT TIME ZONE $9)::date >= NULLIF($7,'')::date)
 	AND ($8::text='' OR (s.created_at AT TIME ZONE $9)::date <= NULLIF($8,'')::date)
-	AND ($10::text='' OR strpos(lower(si.sku),lower($10))>0 OR strpos(lower(si.product_name),lower($10))>0)`
+	AND ($10::text='' OR strpos(lower(si.sku),lower($10))>0 OR strpos(lower(si.product_name),lower($10))>0)
+	AND ` + salePaidWith("$11")
 
 func (s Service) SalesMarginReport(ctx context.Context, actor auth.Identity, storeID string, filter SalesMarginFilter) (SalesMarginPage, error) {
 	if filter.Limit < 1 || filter.Limit > 100 || filter.Offset < 0 || filter.Offset > 100000 {
@@ -130,7 +151,8 @@ func (s Service) readSalesMargin(ctx context.Context, actor auth.Identity, store
 		return ErrReportInvalid
 	}
 	query := strings.TrimSpace(filter.Query)
-	if !utf8.ValidString(query) || utf8.RuneCountInString(query) > 120 || strings.IndexFunc(query, unicode.IsControl) >= 0 {
+	if !utf8.ValidString(query) || utf8.RuneCountInString(query) > 120 || strings.IndexFunc(query, unicode.IsControl) >= 0 ||
+		!validSaleMethod(filter.Method) {
 		return ErrReportInvalid
 	}
 	useDates := filter.FromDate != "" || filter.ToDate != ""
@@ -173,7 +195,7 @@ func (s Service) readSalesMargin(ctx context.Context, actor auth.Identity, store
 			WHERE st.tenant_id=$1 AND st.id=$2`, actor.TenantID, storeID).Scan(&timezone); err != nil {
 			return err
 		}
-		args := []any{actor.TenantID, storeID, supervise, actor.UserID, from, to, filter.FromDate, filter.ToDate, timezone, query}
+		args := []any{actor.TenantID, storeID, supervise, actor.UserID, from, to, filter.FromDate, filter.ToDate, timezone, query, filter.Method}
 		if page != nil {
 			var err error
 			page.Summary, err = summarizeSalesMargin(ctx, tx, args)
@@ -213,7 +235,7 @@ func (s Service) readSalesMargin(ctx context.Context, actor auth.Identity, store
 			CASE WHEN si.unit_cost_snapshot IS NOT NULL AND si.unit_price*si.quantity>0
 				THEN round(((si.unit_price*si.quantity-si.unit_cost_snapshot*si.quantity)/(si.unit_price*si.quantity))*100,4)::text
 				ELSE NULL END`+salesMarginScope+`
-			ORDER BY s.created_at DESC,s.sale_number DESC,si.sku,si.variant_id LIMIT $11 OFFSET $12`, append(args, limit, filter.Offset)...)
+			ORDER BY s.created_at DESC,s.sale_number DESC,si.sku,si.variant_id LIMIT $12 OFFSET $13`, append(args, limit, filter.Offset)...)
 		if err != nil {
 			return err
 		}

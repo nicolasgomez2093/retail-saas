@@ -2974,7 +2974,8 @@ paths:
         - $ref: '#/components/parameters/InventoryStoreQuery'
         - name: status
           in: query
-          schema: {type: string, enum: [pending, settled], default: pending}
+          schema: {type: string, enum: [pending, partial, settled], default: pending}
+          description: partial lista los fiados con saldo que ya recibieron abonos o compensaciones.
         - name: q
           in: query
           description: Nombre actual o histórico del cliente, con coincidencia parcial, o número exacto de venta. La búsqueda se aplica al listado y al resumen.
@@ -3024,7 +3025,8 @@ paths:
         - $ref: '#/components/parameters/InventoryStoreQuery'
         - name: status
           in: query
-          schema: {type: string, enum: [pending, settled], default: pending}
+          schema: {type: string, enum: [pending, partial, settled], default: pending}
+          description: partial lista los fiados con saldo que ya recibieron abonos o compensaciones.
         - name: q
           in: query
           description: Nombre actual o histórico del cliente o número exacto de venta.
@@ -3305,6 +3307,7 @@ paths:
         - name: to_date
           in: query
           schema: {type: string, format: date}
+        - $ref: '#/components/parameters/SaleMethodQuery'
         - name: limit
           in: query
           schema: {type: integer, minimum: 1, maximum: 100, default: 25}
@@ -3423,6 +3426,69 @@ paths:
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/reports/collections:
+    get:
+      operationId: getCollectionsReport
+      summary: Consultar el dinero cobrado y reintegrado por medio de pago.
+      description: Cada pago cuenta el día local en que se recibió y con su medio real. Incluye pagos de ventas, señas de reservas, abonos de fiados, cobros de diferencias de cambios y reintegros (con importe negativo). Una venta fiada no suma hasta que se abona. Cajeros ven los movimientos de sus sesiones y supervisores los de la sucursal.
+      parameters:
+        - $ref: '#/components/parameters/InventoryStoreQuery'
+        - name: from_date
+          in: query
+          schema: {type: string, format: date}
+        - name: to_date
+          in: query
+          schema: {type: string, format: date}
+        - name: method
+          in: query
+          schema: {type: string, enum: [cash, debit, credit, transfer, qr]}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 25}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, maximum: 100000, default: 0}
+      responses:
+        '200':
+          description: Totales por medio, por origen y por día, con los movimientos paginados.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CollectionsReport'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/reports/purchases:
+    get:
+      operationId: getPurchasesReport
+      summary: Consultar la mercadería recibida en un período.
+      description: Agrupa las recepciones por día local, proveedor y producto, valuadas al costo cargado en cada recepción. Las unidades sin costo no suman importe. Requiere permiso de lectura de compras.
+      parameters:
+        - $ref: '#/components/parameters/InventoryStoreQuery'
+        - name: from_date
+          in: query
+          schema: {type: string, format: date}
+        - name: to_date
+          in: query
+          schema: {type: string, format: date}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, maximum: 100000, default: 0}
+      responses:
+        '200':
+          description: Resumen, series y recepciones paginadas.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PurchasesReport'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /api/v1/reports/sales:
     get:
       operationId: getSalesMarginReport
@@ -3450,6 +3516,7 @@ paths:
           in: query
           description: Texto literal incluido en el SKU o en el nombre del producto guardados al vender. Ignora mayúsculas y minúsculas.
           schema: {type: string, maxLength: 120}
+        - $ref: '#/components/parameters/SaleMethodQuery'
         - name: limit
           in: query
           schema: {type: integer, minimum: 1, maximum: 100, default: 25}
@@ -3539,6 +3606,7 @@ paths:
           in: query
           description: Texto literal incluido en el SKU o en el nombre del producto guardados al vender. Ignora mayúsculas y minúsculas.
           schema: {type: string, maxLength: 120}
+        - $ref: '#/components/parameters/SaleMethodQuery'
       responses:
         '200':
           description: Archivo margen-ventas.csv codificado en UTF-8, con encabezado incluso para un período vacío.
@@ -3971,6 +4039,11 @@ components:
             properties:
               name: {type: string, minLength: 1, maxLength: 120}
   parameters:
+    SaleMethodQuery:
+      name: method
+      in: query
+      description: Conserva las ventas cobradas, al menos en parte, con ese medio (seña incluida). on_credit conserva las ventas fiadas.
+      schema: {type: string, enum: [cash, debit, credit, transfer, qr, on_credit]}
     CashSessionID:
       name: id
       in: path
@@ -4017,6 +4090,128 @@ components:
       required: true
       schema: {type: string, format: uuid}
   schemas:
+    CollectionsReport:
+      type: object
+      required: [timezone, methods, sources, daily, items, hasMore]
+      properties:
+        timezone: {type: string}
+        hasMore: {type: boolean}
+        methods:
+          type: array
+          items:
+            type: object
+            required: [currency, method, collected, refunded, net, count]
+            properties:
+              currency: {type: string}
+              method: {type: string, enum: [cash, debit, credit, transfer, qr]}
+              collected: {type: string}
+              refunded: {type: string}
+              net: {type: string}
+              count: {type: integer}
+        sources:
+          type: array
+          items:
+            type: object
+            required: [currency, source, amount, count]
+            properties:
+              currency: {type: string}
+              source: {type: string, enum: [sale, deposit, receivable, exchange, refund]}
+              amount: {type: string}
+              count: {type: integer}
+        daily:
+          type: array
+          description: Hasta los 31 días más recientes con movimientos.
+          items:
+            type: object
+            required: [date, currency, collected, refunded]
+            properties:
+              date: {type: string, format: date}
+              currency: {type: string}
+              collected: {type: string}
+              refunded: {type: string}
+        items:
+          type: array
+          items:
+            type: object
+            required: [source, method, currency, amount, happenedAt, saleId, saleNumber, customer]
+            properties:
+              source: {type: string, enum: [sale, deposit, receivable, exchange, refund]}
+              method: {type: string, enum: [cash, debit, credit, transfer, qr]}
+              currency: {type: string}
+              amount: {type: string, description: Negativo para reintegros.}
+              happenedAt: {type: string, format: date-time}
+              saleId: {type: [string, 'null'], format: uuid}
+              saleNumber: {type: [string, 'null']}
+              customer: {type: [string, 'null']}
+    PurchasesReport:
+      type: object
+      required: [timezone, currency, summary, daily, suppliers, products, items, hasMore]
+      properties:
+        timezone: {type: string}
+        currency: {type: string}
+        hasMore: {type: boolean}
+        summary:
+          type: object
+          required: [receiptCount, receivedOrders, units, unitsWithCost, rejectedUnits, knownCost, placedOrders, orderedUnits, pendingOrders]
+          properties:
+            receiptCount: {type: integer}
+            receivedOrders: {type: integer}
+            units: {type: integer}
+            unitsWithCost: {type: integer}
+            rejectedUnits: {type: integer}
+            knownCost: {type: string}
+            placedOrders: {type: integer, description: Órdenes emitidas en el período.}
+            orderedUnits: {type: integer}
+            pendingOrders: {type: integer, description: 'Órdenes abiertas o parciales hoy, sin depender del período.'}
+        daily:
+          type: array
+          items:
+            type: object
+            required: [date, receiptCount, units, knownCost]
+            properties:
+              date: {type: string, format: date}
+              receiptCount: {type: integer}
+              units: {type: integer}
+              knownCost: {type: string}
+        suppliers:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            required: [supplierId, supplier, receiptCount, units, knownCost]
+            properties:
+              supplierId: {type: string, format: uuid}
+              supplier: {type: string}
+              receiptCount: {type: integer}
+              units: {type: integer}
+              knownCost: {type: string}
+        products:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            required: [productId, product, units, knownCost]
+            properties:
+              productId: {type: string, format: uuid}
+              product: {type: string}
+              units: {type: integer}
+              knownCost: {type: string}
+        items:
+          type: array
+          items:
+            type: object
+            required: [receiptId, orderId, orderNumber, supplier, locationName, receivedAt, units, rejectedUnits, knownCost, unitsWithoutCost]
+            properties:
+              receiptId: {type: string, format: uuid}
+              orderId: {type: string, format: uuid}
+              orderNumber: {type: [integer, 'null']}
+              supplier: {type: string}
+              locationName: {type: string}
+              receivedAt: {type: string, format: date-time}
+              units: {type: integer}
+              rejectedUnits: {type: integer}
+              knownCost: {type: string}
+              unitsWithoutCost: {type: integer}
     PurchaseOrder:
       type: object
       required: [id, number, storeId, supplierId, supplierName, reference, currency, status, orderedAt, createdBy, cancelledAt, cancelReason, items]

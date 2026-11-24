@@ -1,3 +1,5 @@
+import '../purchases/purchases.css';
+import './existences.css';
 import { LabelDialog } from '../catalog/LabelDialog';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { routeHref } from '../../app/routes';
@@ -139,6 +141,15 @@ function Quantity({ value }: { value: number | null }) {
   return value === null ? <span>Sin saldo registrado</span> : <>{value.toLocaleString('es-AR')}</>;
 }
 
+// One state per row, like the approved design: inactive first, then stock level.
+function StockState({ row }: { row: ExistenceRow }) {
+  if (row.variantStatus === 'inactive') return <span className="pu-pill muted">Inactiva</span>;
+  if (row.sellable === null || row.sellable === undefined) return <span className="pu-pill muted">Sin dato</span>;
+  if (row.sellable <= 0) return <span className="pu-pill danger">Agotado</span>;
+  if (row.lowStock) return <span className="pu-pill warning">Stock bajo<span className="pos-sr-only">: alerta de mínimo</span></span>;
+  return <span className="pu-pill">Disponible</span>;
+}
+
 function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: ExistenceQuery }) {
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const groups = new Map<string, ExistenceRow[]>();
@@ -162,7 +173,9 @@ function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: Existenc
                 onClick={() => setCollapsed(old => expanded ? [...old, id] : old.filter(item => item !== id))}>
                 {product.product}<span className="pos-sr-only"> · variantes en esta página</span>
               </button> : <strong>{product.product}</strong>}
-              <small>{product.productStatus === 'inactive' ? 'Producto inactivo' : 'Producto activo'}</small>
+              {product.productStatus === 'inactive' ? <small>Producto inactivo</small>
+                : <small className="pos-sr-only">Producto activo</small>}
+              <span className="existences-group-count" aria-hidden="true">{entries.length === 1 ? '1 variante' : entries.length + ' variantes'}</span>
             </th>
           </tr>
           {expanded && entries.map(row => row.variantId ? <tr key={row.variantId} className="existences-variant" role="row">
@@ -171,8 +184,7 @@ function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: Existenc
             <td role="cell" data-label="Reservado">{row.reserved ?? '—'}</td>
             <td role="cell" data-label="Vendible" className="existences-amount"><Quantity value={row.sellable} /></td>
             <td role="cell" data-label="Ubicaciones con saldo">{row.recordedLocations}</td>
-            <td role="cell" className="existences-variant-state" data-label="Estado">{row.variantStatus === 'inactive' ? 'Inactiva' : 'Activa'}
-              {row.lowStock && <small className="inventory-low-stock">Alerta de mínimo</small>}</td>
+            <td role="cell" className="existences-variant-state" data-label="Estado"><StockState row={row} /></td>
             <td role="cell" className="existences-variant-action"><a id={'existencia-' + row.variantId} className="existences-detail-link" href={existencesHref({ ...filters, detalle: row.variantId })}
               aria-label={'Ver ubicaciones de ' + row.sku}>Ver detalle</a></td>
           </tr> : <tr key={id + '-empty'} className="existences-no-variants" role="row"><td role="cell" colSpan={7}>Producto sin variantes</td></tr>)}

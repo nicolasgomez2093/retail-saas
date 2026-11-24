@@ -40,8 +40,10 @@ type HistoryFilter struct {
 	Query    string
 	FromDate string
 	ToDate   string
-	Limit    int
-	Offset   int
+	// Method keeps the sales charged with it, as in the sales report.
+	Method string
+	Limit  int
+	Offset int
 }
 
 type Ticket struct {
@@ -79,7 +81,7 @@ func (s Service) History(ctx context.Context, actor auth.Identity, storeID strin
 			return History{}, ErrInvalid
 		}
 	}
-	if filter.FromDate != "" && filter.ToDate != "" && filter.FromDate > filter.ToDate {
+	if (filter.FromDate != "" && filter.ToDate != "" && filter.FromDate > filter.ToDate) || !validSaleMethod(filter.Method) {
 		return History{}, ErrInvalid
 	}
 	var result History
@@ -106,8 +108,9 @@ func (s Service) History(ctx context.Context, actor auth.Identity, storeID strin
 				OR lower(i.sku)=lower($8) OR EXISTS (SELECT 1 FROM barcodes b WHERE (b.tenant_id,b.variant_id)=(i.tenant_id,i.variant_id) AND b.code=$8))))
 			AND ($9='' OR (s.created_at AT TIME ZONE t.timezone)::date >= NULLIF($9,'')::date)
 			AND ($10='' OR (s.created_at AT TIME ZONE t.timezone)::date <= NULLIF($10,'')::date)
+			AND `+salePaidWith("$11")+`
 			ORDER BY s.sale_number DESC LIMIT $6 OFFSET $7`,
-			actor.TenantID, storeID, supervise, actor.UserID, number, filter.Limit+1, filter.Offset, filter.Query, filter.FromDate, filter.ToDate)
+			actor.TenantID, storeID, supervise, actor.UserID, number, filter.Limit+1, filter.Offset, filter.Query, filter.FromDate, filter.ToDate, filter.Method)
 		if err != nil {
 			return err
 		}

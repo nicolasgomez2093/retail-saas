@@ -24,11 +24,12 @@ const groups: Group[] = [
     { label: 'Compras', route: 'compras', access: 'purchases' },
     { label: 'Proveedores', route: 'proveedores', access: 'suppliers' },
   ] },
-  { id: 'gestion', label: 'Gestión', entries: [
-    { label: 'Gestión', route: 'gestion' },
+  { id: 'caja', label: 'Caja', entries: [{ label: 'Caja', route: 'caja', access: 'cash' }] },
+  { id: 'reportes', label: 'Reportes', entries: [{ label: 'Reportes', route: 'reportes', access: 'cash' }] },
+  // The hub behind «Más» on phones, plus the administration pages under Configuración.
+  { id: 'gestion', label: 'Administración', entries: [
+    { label: 'Más opciones', route: 'gestion' },
     { label: 'Listas de precios', route: 'configuracion/precios', access: 'prices' },
-    { label: 'Caja', route: 'caja', access: 'cash' },
-    { label: 'Reportes', route: 'reportes', access: 'cash' },
     { label: 'Configuración', route: 'configuracion' },
     { label: 'Sucursales', route: 'configuracion/sucursales', access: 'stores' },
     { label: 'Usuarios y permisos', route: 'configuracion/usuarios', access: 'users' },
@@ -114,12 +115,12 @@ function probe(resource: AccessResource, branchId?: string, retry = false) {
 }
 const menuIcons: Partial<Record<Destination, string>> = {
   inicio: '⌂', productos: '▦', vender: '＋', stock: '▤', clientes: '♧',
-  gestion: '◴', compras: '◈', reportes: '▥', configuracion: '⚙',
+  gestion: '⋯', caja: '◴', compras: '◈', reportes: '▥', configuracion: '⚙',
 };
 const desktopEntries: Entry[] = [
   { label: 'Inicio', route: 'inicio' }, { label: 'Productos', route: 'productos' },
   { label: 'Vender', route: 'vender', access: 'cash' }, { label: 'Inventario', route: 'stock', access: 'stock' },
-  { label: 'Clientes', route: 'clientes', access: 'cash' }, { label: 'Gestión', route: 'gestion' },
+  { label: 'Clientes', route: 'clientes', access: 'cash' }, { label: 'Caja', route: 'caja', access: 'cash' },
   { label: 'Compras', route: 'compras', access: 'purchases' }, { label: 'Reportes', route: 'reportes', access: 'cash' },
 ];
 
@@ -169,10 +170,12 @@ export function Navigation({ destination, branchId, user, busy, onLogout, onCurr
     const access = entryAccess(entry, branchId);
     const route = entry.route;
     const direct = destination.menuRoute === route;
-    const contextual = route !== 'gestion' && navigationContext(route).group !== 'gestion' &&
-      destination.group === navigationContext(route).group;
-    const management = route === 'gestion' && destination.group === 'gestion' &&
-      (mobile || !desktopEntries.some(candidate => candidate.route === destination.menuRoute));
+    const group = navigationContext(route).group;
+    const contextual = route !== 'gestion' && group !== 'gestion' && destination.group === group;
+    // Desktop: administration pages light up Configuración. Phones: «Más» covers every section without its own tab.
+    const management = mobile
+      ? route === 'gestion' && !mobileEntries.some(candidate => navigationContext(candidate.route).group === destination.group)
+      : route === 'configuracion' && destination.group === 'gestion' && destination.menuRoute !== 'gestion';
     return <a key={route} href={menuHref(route)} className={mobile ? undefined : 'navigation-group'}
       aria-current={direct || contextual || management ? 'page' : undefined}
       aria-disabled={access !== 'allowed' || undefined}

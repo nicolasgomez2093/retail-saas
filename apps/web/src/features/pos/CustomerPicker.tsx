@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, type Customer, type CustomerPage } from '../../shared/api/client';
+import { posPrice } from './priceDisplay';
 
 const pageSize = 25;
 
@@ -116,30 +117,36 @@ export function CustomerPicker({ storeId, disabled, selection, onSelect, label =
       <label>Nombre o teléfono<input name="q" maxLength={120} /></label>
       <button>Buscar clientes</button>
     </form>
-    {result && (result.page.items.length === 0 ? <p>No hay clientes para esa búsqueda.</p> :
-      <ul className="catalog-items">{result.page.items.map((item) => {
+    {result && directory && result.page.items.length > 0 && <div className="pu-card customers-table"><div className="pu-table-wrap"><table className="pu-table">
+      <thead><tr><th scope="col">Nombre</th><th scope="col">Teléfono</th><th scope="col">Última compra</th>
+        <th scope="col" className="num">Saldo pendiente</th><th scope="col"><span className="pos-sr-only">Acciones</span></th></tr></thead>
+      <tbody>{result.page.items.map((item) => {
         const summary = summaries.get(item.id);
-        return <li key={item.id}>
-        {directory ? <>
-          <span><strong>{item.name}</strong>{item.phone && <small>{item.phone}</small>}</span>
-          {summary && <dl className="directory-customer-summary">
-            <div><dt>Última compra identificada</dt><dd>{summary.lastPurchase && date
-              ? <time dateTime={summary.lastPurchase}>{date.format(new Date(summary.lastPurchase))}</time> : 'Sin compras registradas'}</dd></div>
-            <div><dt>Saldo pendiente</dt><dd>{summary.balances.length
-              ? summary.balances.map(({ currency, amount }) => currency + ' ' + amount.replace('.', ',')).join(' · ')
-              : 'Sin saldo pendiente'}</dd></div>
-          </dl>}
-          <button type="button" className="catalog-link" aria-label={'Ver ficha de ' + item.name} onClick={() => {
-            setProfile(item);
-            setEditing(false);
-            setNotice('');
-            setError('');
-          }}>Ver ficha</button>
-          <button type="button" className="catalog-link" aria-label={'Ver cuenta de ' + item.name} onClick={() => onSelect(item)}>Ver cuenta</button>
-        </> : <button type="button" className="catalog-link" onClick={() => onSelect(item)}>
+        return <tr key={item.id}>
+          <th scope="row">{item.name}</th>
+          <td data-label="Teléfono">{item.phone || <span className="customers-muted">Sin teléfono</span>}</td>
+          <td data-label="Última compra">{summary?.lastPurchase && date
+            ? <time dateTime={summary.lastPurchase}>{date.format(new Date(summary.lastPurchase))}</time> : <span className="customers-muted">Sin compras</span>}</td>
+          <td className="num" data-label="Saldo pendiente">{summary?.balances.length
+            ? <b>{summary.balances.map(({ currency, amount }) => currency + ' ' + posPrice(amount)).join(' · ')}</b>
+            : <span className="customers-muted">Sin saldo</span>}</td>
+          <td className="pu-cell-actions">
+            <button type="button" className="pu-btn" aria-label={'Ver ficha de ' + item.name} onClick={() => {
+              setProfile(item);
+              setEditing(false);
+              setNotice('');
+              setError('');
+            }}>Ver ficha</button>
+            <button type="button" className="pu-btn" aria-label={'Ver cuenta de ' + item.name} onClick={() => onSelect(item)}>Ver cuenta</button>
+          </td>
+        </tr>; })}</tbody>
+    </table></div></div>}
+    {result && (result.page.items.length === 0 ? <p>No hay clientes para esa búsqueda.</p> : !directory &&
+      <ul className="catalog-items">{result.page.items.map((item) => <li key={item.id}>
+        <button type="button" className="catalog-link" onClick={() => onSelect(item)}>
           {item.name}{item.phone && ' · ' + item.phone}
-        </button>}
-      </li>; })}</ul>)}
+        </button>
+      </li>)}</ul>)}
     {result && (result.offset > 0 || result.page.hasMore) && <nav className="actions" aria-label="Páginas de clientes">
       <button type="button" disabled={result.offset === 0} onClick={() => void search(result.query, result.offset - pageSize)}>Anterior</button>
       <button type="button" disabled={!result.page.hasMore} onClick={() => void search(result.query, result.offset + pageSize)}>Siguiente</button>

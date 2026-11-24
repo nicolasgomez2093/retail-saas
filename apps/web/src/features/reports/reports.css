@@ -62,3 +62,71 @@
 }
 .sales-report .pu-panelbody>.pu-hint+.pu-hint,.sales-report .pu-panelbody>.sr-list+.pu-hint{margin-top:8px}
 .sales-report .pu-panelbody>.pu-hint:first-of-type{margin-bottom:8px}
+
+/* Qué querés ver: the .tabs of the HTML, with a short hint under each view. */
+.rp-views{display:flex;gap:22px;overflow-x:auto;border-bottom:1px solid var(--p-line);margin:-8px 0 18px;scrollbar-width:none}
+.app-shell .rp-views button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:max-content;width:auto;min-height:0;
+  border:0;border-radius:0;background:none;color:var(--p-muted);padding:12px 0 13px;border-bottom:2px solid transparent;font:inherit;cursor:pointer}
+.app-shell .rp-views button b{font-size:15px;font-weight:800}
+.app-shell .rp-views button small{font-size:12px;font-weight:600;color:var(--p-muted)}
+.app-shell .rp-views button:hover{color:var(--p-ink)}
+.app-shell .rp-views button[aria-pressed=true]{color:var(--p-green);border-bottom-color:var(--p-green)}
+.app-shell .rp-views button:focus-visible{outline:2px solid var(--p-green);outline-offset:2px}
+.rp-selection{color:var(--p-ink);font-weight:700}
+.rp-filter-label{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--p-muted);min-width:62px}
+.sr-filters .pu-filters.rp-secondary{border-top:1px solid var(--p-line);gap:7px;flex-wrap:wrap}
+.rp-note{margin:-8px 0 22px}
+.rp-body[data-stale]{opacity:.6;transition:opacity .2s}
+.rp-legend{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--p-muted)}
+.rp-legend i{width:10px;height:10px;border-radius:3px;background:var(--p-green)}
+.rp-table td[data-negative]{color:#a33b2b}
+.rp-flush{margin-bottom:0}
+
+/* Columns per day: single hue, 4px rounded data end, square at the baseline, recessive axis. */
+.rc-columns{margin:4px 0 0}
+.rc-columns .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.rc-plot{position:relative;height:180px;border-bottom:1px solid var(--p-line);
+  background:linear-gradient(to bottom,#eef1ef 1px,transparent 1px) 0 0/100% 50%}
+.rc-bars{list-style:none;margin:0;padding:0;height:100%;display:grid;grid-template-columns:repeat(var(--rc-count),minmax(0,1fr));align-items:end}
+.rc-bars li{height:100%;display:flex}
+.app-shell .rc-columns button.rc-hit{all:unset;box-sizing:border-box;flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;
+  padding:0 1px;cursor:default;border-radius:6px 6px 0 0}
+.app-shell .rc-columns button.rc-hit:focus-visible{outline:2px solid var(--p-green);outline-offset:-2px}
+.rc-bar{display:block;width:100%;max-width:24px;background:var(--p-green);border-radius:4px 4px 0 0;transition:filter .12s}
+.rc-hit[data-active] .rc-bar{filter:brightness(1.35)}
+.rc-hit[data-active]{background:#f3f8f3}
+.rc-tip{position:absolute;top:-6px;transform:translate(-50%,-100%);background:#fff;border:1px solid var(--p-line);border-radius:10px;
+  box-shadow:0 6px 18px rgba(32,52,45,.12);padding:8px 11px;white-space:nowrap;pointer-events:none;z-index:2;display:grid;gap:2px}
+.rc-tip[data-edge=start]{transform:translate(-12%,-100%)}
+.rc-tip[data-edge=end]{transform:translate(-88%,-100%)}
+.rc-tip b{font-size:14px;font-variant-numeric:tabular-nums;color:var(--p-ink)}
+.rc-tip span{font-size:12px;color:var(--p-muted)}
+.rc-axis{display:grid;grid-template-columns:repeat(var(--rc-count),minmax(0,1fr));margin-top:6px;font-size:11px;color:var(--p-muted);font-variant-numeric:tabular-nums}
+.rc-axis span{text-align:center;white-space:nowrap;overflow:visible;justify-self:center}
+.rc-axis span:first-child{justify-self:start;text-align:left}
+.rc-axis span:last-child{justify-self:end;text-align:right}
+.rc-empty{margin:0;padding:34px 10px;text-align:center;color:var(--p-muted);background:#f7f9f7;border-radius:10px}
+.sales-report .pu-panelbody>.rc-empty{margin-bottom:12px}
+
+/* Horizontal bars for breakdowns: text carries the value, the bar only the proportion. */
+.rc-list{list-style:none;margin:0 0 12px;padding:0}
+.rc-list li{padding:11px 0;border-bottom:1px solid var(--p-line)}
+.rc-list li:last-child{border-bottom:0}
+.rc-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rc-name{min-width:0;font-weight:700}
+.rc-name small{display:block;font-weight:500;font-size:12px;color:var(--p-muted);margin-top:1px}
+.rc-name a{color:inherit}
+.rc-row b{flex:none;font-variant-numeric:tabular-nums}
+.rc-track{display:block;height:6px;margin-top:8px;border-radius:0 4px 4px 0;background:#eef1ef}
+.rc-track span{display:block;height:100%;background:var(--p-green);border-radius:0 4px 4px 0}
+@media (max-width:760px){
+  .rc-plot{height:150px}
+  .rp-views{gap:18px}
+  .rp-filter-label{min-width:0;flex:1 1 100%}
+}
+/* Phones: the four views fit without scrolling; the hint stays as the button's description in the header line. */
+@media (max-width:560px){
+  .rp-views{gap:0;justify-content:space-between}
+  .app-shell .rp-views button small{display:none}
+  .app-shell .rp-views button{padding:12px 6px 13px}
+}
