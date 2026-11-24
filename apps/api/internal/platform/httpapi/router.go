@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +25,11 @@ const sessionCookie = "retail_session"
 
 func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine {
 	router := gin.New()
-	router.SetTrustedProxies(nil)
+	// Client addresses come from X-Forwarded-For only behind the proxies named in TRUSTED_PROXIES.
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		panic(err) // config.Load already validated the list.
+	}
+	router.Use(securityHeaders(cfg))
 	router.Use(gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, _ any) {
 		slog.Error("pánico al procesar solicitud", "route", c.FullPath())
 		fail(c, 500, "internal_error", "Error interno")
@@ -34,8 +40,11 @@ func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine
 		c.Header("Cache-Control", "no-store")
 		c.Header("X-Content-Type-Options", "nosniff")
 		if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPatch || c.Request.Method == http.MethodPut || c.Request.Method == http.MethodDelete {
+			// SameSite=Strict already keeps the session cookie off cross-site requests; these checks
+			// also reject them when an old browser or a misconfigured proxy would let one through.
 			origin := c.GetHeader("Origin")
-			if origin != "" && origin != cfg.WebOrigin {
+			site := c.GetHeader("Sec-Fetch-Site")
+			if origin != "" && origin != cfg.WebOrigin || site == "cross-site" || site == "same-site" && origin != cfg.WebOrigin {
 				fail(c, 403, "origin_forbidden", "Origen no permitido")
 				return
 			}
@@ -52,6 +61,7 @@ func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine
 	})
 	version := api.Group("/v1")
 	limiter := rate.NewLimiter(rate.Every(250*time.Millisecond), 8)
+	failures := newLoginThrottle(15 * time.Minute)
 	version.POST("/auth/login", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 8192)
 		var input struct {
@@ -69,16 +79,26 @@ func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine
 			fail(c, 400, "invalid_request", "Ingresá un correo válido")
 			return
 		}
+		commerce := strings.ToLower(strings.TrimSpace(input.Commerce))
+		account, address := commerce+"\x00"+email, c.ClientIP()
+		if wait := failures.Blocked(account, address); wait > 0 {
+			c.Header("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+			fail(c, 429, "too_many_attempts", "Demasiados intentos fallidos. Esperá unos minutos y volvé a intentar.")
+			return
+		}
 		if !limiter.Allow() {
 			respondError(c, auth.ErrBusy)
 			return
 		}
-		token, choice, err := service.Login(c.Request.Context(), strings.ToLower(strings.TrimSpace(input.Commerce)),
-			email, input.Password)
+		token, choice, err := service.Login(c.Request.Context(), commerce, email, input.Password)
+		if errors.Is(err, auth.ErrUnauthorized) {
+			failures.Fail(account, address)
+		}
 		if err != nil {
 			respondError(c, err)
 			return
 		}
+		failures.Succeed(account, address)
 		if choice != nil {
 			c.JSON(http.StatusOK, choice)
 			return
@@ -137,6 +157,24 @@ func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine
 	registerReservations(version, db, service)
 	registerSales(version, db, service)
 	return router
+}
+
+// securityHeaders applies to every API response: JSON and product photos only, never HTML.
+func securityHeaders(cfg config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.Writer.Header()
+		header.Set("X-Content-Type-Options", "nosniff")
+		header.Set("X-Frame-Options", "DENY")
+		header.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+		header.Set("Referrer-Policy", "no-referrer")
+		header.Set("Cross-Origin-Resource-Policy", "same-origin")
+		header.Set("Cross-Origin-Opener-Policy", "same-origin")
+		header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+		if cfg.Secure {
+			header.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		c.Next()
+	}
 }
 
 func authenticated(service *auth.Service, handler func(*gin.Context, auth.Identity)) gin.HandlerFunc {

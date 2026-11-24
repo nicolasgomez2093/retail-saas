@@ -179,6 +179,27 @@ func TestIdentityAcrossTenants(t *testing.T) {
 		t.Fatalf("cookie insegura: %v", cookies)
 	}
 	cookie := cookies[0]
+	for header, value := range map[string]string{"X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+		"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+		"Content-Security-Policy":   "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"} {
+		if got := res.Header().Get(header); got != value {
+			t.Fatalf("cabecera %s: %q", header, got)
+		}
+	}
+	crossSite := httptest.NewRequest("POST", logout, nil)
+	crossSite.Header.Set("Sec-Fetch-Site", "cross-site")
+	crossSite.AddCookie(cookie)
+	if rec := httptest.NewRecorder(); func() int { router.ServeHTTP(rec, crossSite); return rec.Code }() != 403 {
+		t.Fatal("una escritura desde otro sitio debe rechazarse aunque no envíe Origin")
+	}
+	guess := strings.Replace(strings.Replace(credentials, password, "adivinanza", 1), "persona@", "bloqueo@", 1)
+	for i := 0; i < 5; i++ {
+		request("POST", login, guess, origin, nil, 401)
+	}
+	if blocked := request("POST", login, guess, origin, nil, 429); blocked.Header().Get("Retry-After") == "" ||
+		!strings.Contains(blocked.Body.String(), "too_many_attempts") {
+		t.Fatalf("después de 5 fallos la cuenta debe esperar: %s", blocked.Body)
+	}
 	second := request("POST", login, strings.Replace(credentials, `"uno"`, `"dos"`, 1), origin, nil, 204).Result().Cookies()[0]
 	unscoped := strings.Replace(credentials, `"commerce":"uno",`, "", 1)
 	choiceResponse := request("POST", login, unscoped, origin, nil, 200)

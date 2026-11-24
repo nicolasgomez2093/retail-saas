@@ -1,6 +1,8 @@
 # Retail Platform
 
-Base de un SaaS de gestión comercial multiempresa y multisucursal. Esta entrega incluye el entorno local y el flujo de identidad, sesión y sucursales asignadas.
+SaaS de gestión comercial multiempresa y multisucursal para indumentaria: catálogo con variantes, códigos de barras y etiquetas; punto de venta con fiados, reservas, cambios y devoluciones; compras, inventario, caja y reportes. API en Go, PWA en React y PostgreSQL.
+
+Para reportar una vulnerabilidad, seguí [SECURITY.md](SECURITY.md).
 
 ## Arranque local
 
@@ -146,12 +148,47 @@ docker compose config --quiet
 npx --yes @redocly/cli@1.34.5 lint docs/openapi.yaml --extends minimal
 ```
 
+La CI de GitHub ejecuta además `govulncheck`, `npm audit` y CodeQL. Dependabot propone actualizaciones semanales.
+
 Ajustá la URL de pruebas si cambiaste los valores de `.env`. Usá una base de desarrollo o de CI. La prueba de integración crea y elimina su propio esquema y requiere permisos para crearlo. `make test` ejecuta la integración si se configuró `TEST_DATABASE_URL`.
+
+## Seguridad
+
+Medidas incluidas:
+- **Aislamiento entre comercios:** cada consulta filtra por el comercio de la sesión autenticada. La API nunca acepta `tenant_id` del cliente y los recursos de otro comercio responden 404.
+- **Contraseñas:** se guardan con argon2id (64 MiB, 3 iteraciones) y sal aleatoria. Deben tener entre 12 y 1024 bytes.
+- **Sesiones:**
+  - Token aleatorio de 256 bits; la base guarda solo su SHA-256.
+  - Cookie `HttpOnly`, `Secure` y `SameSite=Strict`, limitada a `/api/v1`.
+  - Vencen a las 8 horas y se revocan al desactivar a la persona o cambiar su rol.
+- **CSRF:** las escrituras rechazan un `Origin` distinto de `WEB_ORIGIN` y las solicitudes marcadas como `cross-site` por el navegador.
+- **Intentos de inicio de sesión:** la misma cuenta desde la misma dirección queda en espera tras 5 fallos en 15 minutos. Hay además topes por cuenta (50) y por dirección (30), y un límite global de solicitudes. Los contadores viven en memoria de cada instancia.
+- **Cabeceras:** CSP `default-src 'none'`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` y HSTS con `COOKIE_SECURE=true`.
+- **Entradas:**
+  - SQL siempre parametrizado.
+  - Límites de tamaño en cada cuerpo de solicitud; el JSON rechaza campos desconocidos.
+  - Las fotos se decodifican con límite de dimensiones y se recodifican a JPEG, lo que descarta metadatos y contenido ajeno.
+  - Las celdas de los CSV exportados se protegen contra fórmulas.
+- **Integridad:** dinero en decimal exacto; ventas, stock, caja y pagos en transacciones con idempotencia.
+- **Contenedor:** la API corre como usuario sin privilegios y Compose publica los puertos solo en loopback.
+
+### Antes de desplegar en producción
+
+- Servir la web y `/api` desde el mismo origen HTTPS, con `COOKIE_SECURE=true` y `WEB_ORIGIN=https://…`.
+- Detrás de un proxy inverso, declarar su IP o CIDR en `TRUSTED_PROXIES`. Así el límite por dirección usa la IP real del cliente y no la del proxy.
+- Cambiar todas las credenciales de ejemplo, usar un usuario de base sin permisos de superusuario y conexiones `sslmode=require` o superior.
+- Agregar en el servidor de la web estas cabeceras:
+  - `Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`;
+  - `Strict-Transport-Security`;
+  - `X-Content-Type-Options: nosniff`;
+  - `Referrer-Policy: no-referrer`.
+- Con más de una instancia de la API, mover el límite de intentos a un almacenamiento compartido o aplicarlo en el proxy.
+- No ejecutar `seed-demo`: solo funciona con `COOKIE_SECURE=false`.
 
 ## Estructura
 
 - `apps/api/cmd/retail` compone los servicios y expone los comandos.
-- `apps/api/internal/modules` contiene autenticación y lectura de sucursales.
+- `apps/api/internal/modules` contiene los módulos de negocio: autenticación, comercios, usuarios, sucursales, catálogo, precios, inventario, caja, clientes, proveedores, compras, reservas y ventas.
 - `apps/api/internal/platform` contiene configuración y transporte HTTP.
 - `apps/api/migrations` contiene el SQL versionado y su ejecutor.
 - `apps/web` contiene la interfaz React y los assets de la PWA.

@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -12,6 +14,8 @@ type Config struct {
 	Addr        string
 	WebOrigin   string
 	Secure      bool
+	// TrustedProxies lists the reverse proxies (IP or CIDR) allowed to set X-Forwarded-For.
+	TrustedProxies []string
 }
 
 func Load() (Config, error) {
@@ -34,6 +38,15 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("WEB_ORIGIN debe ser un origen HTTPS o HTTP local con COOKIE_SECURE=false")
 	}
 	cfg.Secure = secure
+	for _, entry := range strings.Split(os.Getenv("TRUSTED_PROXIES"), ",") {
+		if entry = strings.TrimSpace(entry); entry == "" {
+			continue
+		}
+		if _, _, err := net.ParseCIDR(entry); err != nil && net.ParseIP(entry) == nil {
+			return Config{}, fmt.Errorf("TRUSTED_PROXIES debe ser una lista de IP o CIDR separadas por coma")
+		}
+		cfg.TrustedProxies = append(cfg.TrustedProxies, entry)
+	}
 	return cfg, nil
 }
 
