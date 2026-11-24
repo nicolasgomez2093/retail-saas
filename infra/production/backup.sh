@@ -4,12 +4,14 @@ set -eu
 umask 077
 while :; do
   stamp=$(date -u +%Y%m%d-%H%M%S)
-  if pg_dump --format=custom --file="/backups/retail-$stamp.dump.partial"; then
-    mv "/backups/retail-$stamp.dump.partial" "/backups/retail-$stamp.dump"
-    sha256sum "/backups/retail-$stamp.dump" > "/backups/retail-$stamp.dump.sha256"
+  cd /backups
+  if pg_dump --format=custom --file="retail-$stamp.dump.partial"; then
+    mv "retail-$stamp.dump.partial" "retail-$stamp.dump"
+    # Relative name so the checksum also verifies on the host: cd /var/backups/retail && sha256sum -c <file>.sha256
+    sha256sum "retail-$stamp.dump" > "retail-$stamp.dump.sha256"
     echo "backup ok retail-$stamp.dump"
   else
-    rm -f "/backups/retail-$stamp.dump.partial"
+    rm -f "retail-$stamp.dump.partial"
     echo "backup FAILED $stamp" >&2
   fi
   find /backups -name 'retail-*.dump*' -mtime +"$KEEP_DAYS" -delete
