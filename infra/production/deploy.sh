@@ -18,6 +18,7 @@ ssh "$host" 'test -f /opt/retail/app/infra/production/.env' || {
   echo "Falta /opt/retail/app/infra/production/.env en el servidor (ver docs/PRODUCCION.md)." >&2
   exit 1
 }
+ssh "$host" 'mkdir -p /opt/caddy-sites && { docker network inspect rumbo-edge >/dev/null 2>&1 || docker network create --subnet 172.29.0.0/24 rumbo-edge >/dev/null; }'
 rsync -az --delete --exclude /infra/production/.env "$work"/ "$host:/opt/retail/app/"
 ssh "$host" 'cd /opt/retail/app/infra/production && docker compose up -d --build --wait --remove-orphans && docker image prune -f >/dev/null'
 ssh "$host" 'curl -fsS --max-time 10 https://$(grep ^DOMAIN= /opt/retail/app/infra/production/.env | cut -d= -f2)/api/health/ready'

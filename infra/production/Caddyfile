@@ -30,3 +30,7 @@
 {$LEGACY_DOMAIN:http://legacy.invalid} {
 	redir https://{$DOMAIN}{uri} permanent
 }
+
+# Otros sistemas del mismo VPS (por ejemplo Agendia) dejan su bloque de sitio en /opt/caddy-sites.
+# Sin archivos, el import no hace nada.
+import /etc/caddy/sites/*.caddy

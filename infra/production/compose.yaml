@@ -67,7 +67,8 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
-    networks: [internal]
+      - /opt/caddy-sites:/etc/caddy/sites:ro
+    networks: [internal, edge]
     depends_on:
       api:
         condition: service_healthy
@@ -99,6 +100,11 @@ networks:
       config:
         - subnet: 172.30.0.0/24
         - subnet: fd72:6574:6169::/64
+
+  edge:
+    # Red compartida con otros sistemas del VPS a los que este Caddy les pone el HTTPS. La crea deploy.sh.
+    name: rumbo-edge
+    external: true
 
 volumes:
   postgres-data:
