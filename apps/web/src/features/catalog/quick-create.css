@@ -1,0 +1,190 @@
+/* Alta rápida. Every value below comes from retail_mockup_final.html
+   (.card, .panelhead, .panelbody, .formgrid, .btn, .chip, .note, .grid2,
+   .sidebox, .check, th/td, .modal) so the new screen extends the approved
+   visual system instead of introducing another one. */
+.qa-create{--q-green:var(--accent,#22664f);--q-line:var(--line,#d9e2dc);--q-muted:var(--muted,#64756e);--q-ink:var(--ink,#20342d);
+  animation:qa-enter .22s ease;color:var(--q-ink)}
+@keyframes qa-enter{from{opacity:.5;transform:translateY(5px)}}
+.qa-breadcrumb{font-size:12px;color:var(--q-muted);margin-bottom:16px}
+.qa-create button.qa-link{border:0;background:none;color:var(--q-green);font-weight:800;cursor:pointer;padding:0;min-height:0;width:auto;font-size:inherit}
+.qa-create button.qa-link:hover{text-decoration:underline}
+.qa-create button.qa-link.danger{color:var(--danger,#b4232c)}
+.qa-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:26px}
+.qa-head h2{font-size:30px;letter-spacing:-1.1px;margin:0 0 5px;line-height:1.15}
+.qa-head p{margin:0;color:var(--q-muted);font-size:15px}
+.qa-head h2:focus,.qa-result h2:focus{outline:none}
+
+.app-shell form.qa-layout{max-width:none}
+.qa-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.8fr);gap:22px;align-items:start;margin:0}
+.qa-main{border:0;padding:0;margin:0;min-width:0;display:grid;gap:18px}
+.qa-card{background:#fff;border:1px solid var(--q-line);border-radius:13px;overflow:hidden;min-width:0}
+.qa-panelhead{padding:20px 22px;border-bottom:1px solid var(--q-line)}
+.qa-panelhead h2,.qa-panelhead h3{font-size:18px;margin:0 0 3px}
+.qa-panelhead p{margin:0;color:var(--q-muted);font-size:12px}
+.qa-panelbody{padding:22px}
+
+.qa-formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.qa-formgrid label,.qa-create .qa-label{display:grid;gap:7px;font-weight:700;font-size:13px;align-content:start}
+.qa-formgrid .wide{grid-column:1/-1}
+.qa-create :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;border:1px solid var(--q-line);border-radius:9px;background:#fff;color:var(--q-ink);font:inherit;font-weight:500;min-height:44px;padding:10px 12px}
+.qa-create textarea{min-height:64px;resize:vertical}
+.qa-create :is(input,select,textarea)[aria-invalid=true]{border-color:var(--danger,#b4232c);box-shadow:inset 0 0 0 1px var(--danger,#b4232c)}
+.qa-create :focus-visible{outline:3px solid #89b7a4;outline-offset:2px}
+.qa-field-error{color:var(--danger,#b4232c);font-size:12px;font-weight:600;margin:0}
+.qa-ok{color:#1b6b3f;font-size:12px;font-weight:700}
+.qa-hint{font-size:12px;color:var(--q-muted);font-weight:500;margin:0}
+.qa-muted{color:var(--q-muted);font-size:13px}
+
+/* .btn from the HTML, including hover lift and transition. */
+.qa-create button.qa-btn{background:#fff;color:var(--q-ink);border:1px solid var(--q-line);border-radius:9px;min-height:43px;padding:10px 16px;font-weight:700;transition:.16s;cursor:pointer;width:auto}
+.qa-create button.qa-btn:hover:not(:disabled){transform:translateY(-1px);border-color:#9dbbad;box-shadow:0 5px 15px #173d3210}
+.qa-create button.qa-btn.primary{background:var(--q-green);border-color:var(--q-green);color:#fff}
+.qa-create button.qa-btn.primary:hover:not(:disabled){background:#174d3c;border-color:var(--q-green)}
+.qa-create button.qa-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.qa-create button.qa-btn.wide{width:100%}
+.qa-create button.qa-icon{background:#fff;border:1px solid var(--q-line);color:var(--q-muted);border-radius:8px;width:34px;min-width:34px;height:34px;min-height:34px;padding:0;display:inline-grid;place-items:center;font-size:15px;transition:.16s}
+.qa-create button.qa-icon:hover:not(:disabled){color:var(--q-ink);border-color:#9dbbad;background:#f3f8f3}
+.qa-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+
+/* Choice controls share the .chip language of the HTML. */
+.qa-segment{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.qa-create .qa-segment button,.qa-create button.qa-template{display:grid;gap:3px;text-align:left;background:#fff;color:var(--q-ink);border:1px solid var(--q-line);border-radius:12px;padding:13px 15px;min-height:0;width:auto;transition:background .16s,border-color .16s,transform .16s}
+.qa-create .qa-segment button:hover,.qa-create button.qa-template:hover{background:#f3f8f3;border-color:#b1ceba;transform:translateY(-1px)}
+.qa-create .qa-segment button[aria-checked=true],.qa-create button.qa-template[aria-checked=true]{background:#e4f1e8;border-color:#a4cbb7;box-shadow:inset 0 0 0 1px #a4cbb7}
+.qa-segment b,.qa-template b{font-size:14px}
+.qa-segment small,.qa-template small{color:var(--q-muted);font-size:12px;font-weight:500}
+.qa-segment.compact button{padding:10px 13px}
+.qa-templates{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:20px}
+.qa-chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.qa-create button.qa-chip{border:1px solid var(--q-line);padding:7px 12px;border-radius:30px;font-weight:700;background:#fff;color:var(--q-ink);min-height:36px;width:auto;transition:background .16s,border-color .16s}
+.qa-create button.qa-chip:hover{background:#f3f8f3;border-color:#b1ceba}
+.qa-create button.qa-chip[aria-pressed=true]{background:#e4f1e8;color:var(--q-green);border-color:#a4cbb7}
+.qa-create button.qa-chip[aria-pressed=true]::before{content:'✓ '}
+
+.qa-attribute{border:1px solid var(--q-line);border-radius:12px;padding:14px 16px 16px;margin:0 0 12px;min-width:0;position:relative}
+.qa-attribute legend{display:flex;gap:8px;align-items:baseline;padding:0 6px;font-size:14px}
+.qa-attribute legend small{color:var(--q-muted);font-size:12px;font-weight:500}
+.qa-attribute-tools{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:flex-end;font-size:12px;margin-top:-4px}
+.qa-create .qa-attribute-tools button.qa-link,.qa-more summary{white-space:nowrap}
+.qa-more summary{flex-wrap:wrap}
+.qa-more summary small{white-space:normal}
+.qa-inline{display:flex;gap:8px;align-items:stretch;min-width:0}
+.qa-inline input{flex:1}
+.qa-new-attribute{margin-top:4px}
+.qa-count{margin:16px 0 0;font-weight:700;font-size:13px;color:#1b6b3f}
+.qa-count.warn{color:#9a6500}
+.qa-count.danger{color:var(--danger,#b4232c)}
+.qa-check{display:flex!important;gap:9px;align-items:center;font-weight:600;font-size:13px;margin:12px 0 4px;grid-column:1/-1}
+.qa-check input{width:18px;height:18px;accent-color:var(--q-green)}
+
+.qa-more{margin-top:18px;border-top:1px solid var(--q-line);padding-top:14px}
+.qa-more summary{cursor:pointer;font-weight:800;color:var(--q-green);list-style:none;display:flex;gap:10px;align-items:baseline}
+.qa-more summary::before{content:'▸';transition:transform .16s}
+.qa-more[open] summary::before{transform:rotate(90deg)}
+.qa-more summary small{color:var(--q-muted);font-weight:500}
+.qa-more[open] .qa-formgrid{margin:16px 0 10px}
+.qa-more label .auxiliary-status{font-weight:500}
+
+.qa-note{background:#edf5ed;border-radius:10px;padding:16px;color:#355c47;line-height:1.6;font-size:13px;margin:16px 0}
+.qa-note.warn{background:#fff5e4;color:#8a5b17}
+.qa-note p{margin:0}
+.qa-alert{background:#fce9e9;color:var(--danger,#b4232c);border-radius:10px;padding:14px 16px;font-weight:700;margin:0 0 16px}
+.qa-alert.warn{background:#fff5e4;color:#8a5b17}
+
+.qa-money{display:flex;align-items:center;border:1px solid var(--q-line);border-radius:9px;background:#fff;padding-left:12px;min-height:44px}
+.qa-money:focus-within{outline:3px solid #89b7a4;outline-offset:2px}
+.qa-money span{color:var(--q-muted)}
+.qa-create .qa-money input{border:0;min-height:42px;box-shadow:none}
+.qa-create .qa-money input:focus-visible{outline:none}
+.qa-money:has(input[aria-invalid=true]){border-color:var(--danger,#b4232c)}
+
+.qa-bulk{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:20px 0 12px}
+.qa-create input.qa-qty{width:84px;flex:none;text-align:right}
+
+/* Matrix: table layout from the HTML (th/td), cards on narrow containers. */
+.qa-matrix{container-type:inline-size;border:1px solid var(--q-line);border-radius:12px;overflow:hidden}
+.qa-matrix-head,.qa-matrix-row{display:grid;grid-template-columns:28px minmax(110px,1.2fr) 84px minmax(118px,1fr) minmax(170px,1.3fr) 36px;gap:10px;align-items:center;padding:0 14px}
+.qa-matrix-head{background:#f8faf7;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#65776f;font-weight:700;min-height:44px}
+.qa-matrix.with-sku :is(.qa-matrix-head,.qa-matrix-row){grid-template-columns:28px minmax(110px,1.2fr) 84px minmax(118px,1fr) 110px minmax(170px,1.3fr) 36px}
+.qa-matrix-row{border-top:1px solid var(--q-line);padding-block:10px;transition:background .16s}
+.qa-matrix-row:hover{background:#fafcf9}
+.qa-matrix-row.invalid{background:#fffafa;box-shadow:inset 3px 0 var(--danger,#b4232c)}
+.qa-matrix-row input:not([type=checkbox]),.qa-matrix-row select{min-height:38px;padding:8px 10px;border-radius:8px}
+.qa-matrix input[type=checkbox]{width:18px;height:18px;accent-color:var(--q-green)}
+.qa-variant b{display:block;overflow-wrap:anywhere}
+.qa-variant small{display:block;margin-top:3px}
+.qa-price{display:flex;gap:6px;align-items:center}
+.qa-price input.custom{background:#fffdf4;border-color:#e0c98f}
+.qa-code-cell{display:grid;gap:6px;min-width:0}
+.qa-scan{display:grid;gap:4px}
+.qa-scan input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qa-remove{justify-self:end}
+@container (max-width:600px){
+  .qa-matrix-head{display:none}
+  .qa-matrix .qa-matrix-row{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 38px;grid-template-areas:'s v v r' 'q q p p' 'c c c c';row-gap:10px;padding:14px}
+  .qa-matrix.with-sku .qa-matrix-row{grid-template-areas:'s v v r' 'q q p p' 'k k k k' 'c c c c'}
+  .qa-matrix-row>.qa-select{grid-area:s}.qa-matrix-row>.qa-variant{grid-area:v}.qa-matrix-row>[data-label=Cantidad]{grid-area:q}
+  .qa-matrix-row>[data-label=Precio]{grid-area:p}.qa-matrix-row>[data-label=SKU]{grid-area:k}.qa-matrix-row>[data-label=Código]{grid-area:c}.qa-matrix-row>.qa-remove{grid-area:r}
+  .qa-matrix-row [data-label]::before{content:attr(data-label);display:block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#65776f;font-weight:700;margin-bottom:5px}
+  .qa-create .qa-matrix-row input.qa-qty{width:100%;text-align:left}
+}
+
+/* .sidebox and .check from the HTML. */
+.qa-side{position:sticky;top:18px;min-width:0}
+.qa-sidebox{padding:22px}
+.qa-sidebox h3{margin:0 0 16px;font-size:18px}
+.qa-checkrow{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--q-line)}
+.qa-checkrow>span{background:#e5f1e5;color:#1b6b3f;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:700}
+.qa-checkrow>span.done{background:#e5f1e5;color:#1b6b3f}
+.qa-checkrow small{display:block;color:var(--q-muted);font-size:12px;margin-top:3px;overflow-wrap:anywhere}
+.qa-sidebox button.qa-btn{margin-top:12px}
+.qa-sidebox button.qa-btn.primary{margin-top:20px}
+.qa-sidebox .qa-note{margin-bottom:0}
+
+/* .modal of the HTML (header / body / footer). */
+.qa-dialog{padding:0;border:0;border-radius:15px;width:min(560px,calc(100% - 28px));box-shadow:0 14px 45px #173d3215;color:var(--q-ink);animation:qa-enter .22s ease}
+.qa-dialog::backdrop{background:#122a23a8;backdrop-filter:blur(3px)}
+.qa-dialog header{padding:20px 23px;border-bottom:1px solid var(--q-line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.qa-dialog header h2{margin:0;font-size:20px}
+.qa-dialog-body{padding:23px;line-height:1.6}
+.qa-dialog-body>p:first-child{margin:0 0 10px;font-size:16px;overflow-wrap:anywhere}
+.qa-dialog footer{padding:15px 23px;border-top:1px solid var(--q-line);display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.qa-review-list{list-style:none;margin:0;padding:0}
+.qa-review-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--q-line);margin:0}
+.qa-review-list li:last-child{border:0}
+.qa-review-list span{color:var(--q-muted)}
+.qa-review-list b{text-align:right}
+.qa-saving{display:flex;gap:10px;align-items:center;font-weight:700;color:var(--q-green);margin:14px 0 0}
+.qa-spinner{width:18px;height:18px;border-radius:50%;border:3px solid #cfe2d6;border-top-color:var(--q-green);animation:qa-spin .8s linear infinite;flex:none}
+@keyframes qa-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.qa-create,.qa-dialog,.qa-spinner{animation:none}.qa-create button{transition:none}}
+
+/* Result. */
+.qa-success{display:flex;gap:14px;align-items:center}
+.qa-success>span{width:42px;height:42px;border-radius:50%;background:#e5f1e5;color:#1b6b3f;display:grid;place-items:center;font-size:20px;font-weight:800;flex:none}
+.qa-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 20px}
+.qa-facts>div{background:#f8faf7;border:1px solid var(--q-line);border-radius:11px;padding:13px 15px}
+.qa-facts dt{color:var(--q-muted);font-size:12px}
+.qa-facts dd{margin:5px 0 0;font-weight:800;font-size:16px;overflow-wrap:anywhere}
+.qa-table-wrap{overflow-x:auto;border:1px solid var(--q-line);border-radius:12px}
+.qa-result-table{border-collapse:collapse;width:100%;min-width:560px}
+.qa-result-table th,.qa-result-table td{text-align:left;padding:14px 18px;border-top:1px solid var(--q-line);vertical-align:middle;font-size:13px}
+.qa-result-table thead th{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#65776f;background:#f8faf7;border-top:0}
+.qa-result-table tbody tr:hover :is(td,th){background:#fafcf9}
+.qa-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+
+@media (max-width:1180px){
+  .qa-layout{grid-template-columns:minmax(0,1fr)}
+  .qa-side{position:static}
+}
+@media (max-width:760px){
+  .qa-head{display:block}.qa-head h2{font-size:26px}
+  .qa-formgrid,.qa-segment{grid-template-columns:1fr}
+  .qa-panelhead{padding:17px 16px}.qa-panelbody{padding:16px}
+  .qa-templates{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qa-inline{flex-wrap:wrap}.qa-inline input{flex-basis:100%}
+  .qa-attribute-tools{justify-content:flex-start;margin-top:4px}
+  .qa-bulk>*{flex:1 1 auto}
+  .qa-dialog footer button.qa-btn{flex:1 1 100%}
+  .qa-actions button.qa-btn{flex:1 1 100%}
+}

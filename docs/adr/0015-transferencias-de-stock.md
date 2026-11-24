@@ -1,0 +1,7 @@
+# ADR 0015 — Transferencias de stock
+
+Las ubicaciones de origen y destino deben ser distintas y pertenecer al mismo comercio. Pueden estar en una sola sucursal o en sucursales distintas. El personal que tiene asignada una de las sucursales puede consultar la transferencia desde esa sucursal. Los propietarios, encargados y operadores de inventario pueden crear, despachar y cancelar desde la sucursal de origen, y confirmar la recepción desde la sucursal de destino. Para preparar el borrador pueden consultar los nombres y códigos de los destinos activos del comercio.
+
+El borrador conserva los dos saldos. Cancelar un borrador conserva los saldos. El despacho descuenta las unidades solicitadas del origen después de validar lo disponible y deja la transferencia en tránsito. La recepción es una confirmación final que acredita al destino la cantidad efectivamente recibida por variante, hasta lo despachado. Los faltantes quedan registrados con motivo y requieren su propia conciliación. Una recepción de cero unidades queda registrada y conserva el saldo de destino.
+
+Cada paso guarda estado, fecha, actor y movimientos en una transacción. Los movimientos de stock referencian la transferencia y son inmutables. Las filas de saldo se bloquean en orden de UUID de variante. El disponible del origen excluye las unidades reservadas. La API evita crear borradores duplicados con una clave de idempotencia, y evita repetir el efecto en stock de un despacho, confirmación o cancelación ya aplicados.

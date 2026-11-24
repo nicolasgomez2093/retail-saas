@@ -1,0 +1,71 @@
+name: retail-platform
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-retail}
+      POSTGRES_USER: ${POSTGRES_USER:-retail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail_local_only}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  migrate:
+    image: retail-platform-api:local
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    command: [migrate]
+    environment: &api-environment
+      DATABASE_URL: postgres://${POSTGRES_USER:-retail}:${POSTGRES_PASSWORD:-retail_local_only}@db:5432/${POSTGRES_DB:-retail}?sslmode=disable
+      COOKIE_SECURE: "false"
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    image: retail-platform-api:local
+    pull_policy: never
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: [CMD, retail, healthcheck]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  web:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    entrypoint: []
+    command: [sh, -c, 'npm ci --no-audit --no-fund && npm run dev']
+    environment:
+      API_PROXY: http://api:8080
+    volumes:
+      - ./apps/web:/app:ro
+      - web-modules:/app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5173:5173"
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5173/api/health/ready').then(r => { if (!r.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+
+volumes:
+  postgres-data:
+  web-modules:
