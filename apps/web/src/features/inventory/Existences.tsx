@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { routeHref } from '../../app/routes';
 import { api, ApiError, type ExistenceAccess, type ExistenceDetail, type ExistencePage, type ExistenceRow, type LocationPage, type StockLocation, type Store, type Term } from '../../shared/api/client';
 import { BarcodeScanner } from '../catalog/BarcodeScanner';
+import { CostCell, CostDialog, moneyOf, ValueSummary } from './InventoryCosts';
 import { existenceDefaults, existenceSearch, existencesHref, isExistencesHash, lastExistencesPage, readExistencesHash, type ExistenceQuery } from './existencesQuery';
 
 type Context = { scope: number };
@@ -150,25 +151,35 @@ function StockState({ row }: { row: ExistenceRow }) {
   return <span className="pu-pill">Disponible</span>;
 }
 
-function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: ExistenceQuery }) {
+type CostTarget = { title: string; rows: ExistenceRow[]; opener: HTMLElement | null };
+
+function StockTable({ rows, filters, access, currency, onSetCost }: {
+  rows: ExistenceRow[]; filters: ExistenceQuery; access: ExistenceAccess; currency: string; onSetCost: (target: CostTarget) => void;
+}) {
+  const costs = Boolean(access.canSeeCosts);
+  const canSet = Boolean(access.canSetCosts);
+  const columns = costs ? 8 : 7;
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const groups = new Map<string, ExistenceRow[]>();
   for (const row of rows) {
     const group = groups.get(row.productId);
     if (group) group.push(row); else groups.set(row.productId, [row]);
   }
-  return <div className="existences-table">
+  return <div className={'existences-table' + (costs ? ' with-costs' : '')}>
     <table role="table">
       <thead role="rowgroup"><tr role="row">
-        {['Variante / SKU', 'Físico', 'Reservado', 'Vendible', 'Ubicaciones', 'Estado', 'Detalle'].map(label =>
-          <th key={label} role="columnheader" scope="col" aria-label={label === 'Ubicaciones' ? 'Ubicaciones con saldo registrado' : undefined}>{label}</th>)}
+        {['Variante / SKU', 'Físico', 'Reservado', 'Vendible', 'Ubicaciones', ...(costs ? ['Costo unit.'] : []), 'Estado', 'Detalle'].map(label =>
+          <th key={label} role="columnheader" scope="col" className={label === 'Costo unit.' ? 'existences-cost' : undefined}
+            aria-label={label === 'Ubicaciones' ? 'Ubicaciones con saldo registrado' : label === 'Costo unit.' ? 'Costo unitario promedio' : undefined}>{label}</th>)}
       </tr></thead>
       {[...groups].map(([id, entries]) => {
         const product = entries[0];
         const expanded = !collapsed.includes(id);
+        const stocked = entries.filter(row => row.variantId && (row.onHand ?? 0) > 0);
+        const missing = stocked.filter(row => !row.unitCost).length;
         return <tbody key={id} role="rowgroup">
           <tr className="existences-group" role="row">
-            <th role="rowheader" colSpan={7} scope="rowgroup">
+            <th role="rowheader" colSpan={columns} scope="rowgroup">
               {entries.length > 1 ? <button type="button" className="catalog-link" aria-expanded={expanded}
                 onClick={() => setCollapsed(old => expanded ? [...old, id] : old.filter(item => item !== id))}>
                 {product.product}<span className="pos-sr-only"> · variantes en esta página</span>
@@ -176,6 +187,10 @@ function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: Existenc
               {product.productStatus === 'inactive' ? <small>Producto inactivo</small>
                 : <small className="pos-sr-only">Producto activo</small>}
               <span className="existences-group-count" aria-hidden="true">{entries.length === 1 ? '1 variante' : entries.length + ' variantes'}</span>
+              {canSet && stocked.length > 0 && <button type="button" className="existences-group-cost"
+                onClick={event => onSetCost({ title: 'Costo de ' + product.product, rows: stocked, opener: event.currentTarget })}>
+                {missing ? (missing === 1 ? 'Cargar costo (1 sin costo)' : 'Cargar costo (' + missing + ' sin costo)') : 'Editar costos'}
+                <span className="pos-sr-only"> de {product.product}</span></button>}
             </th>
           </tr>
           {expanded && entries.map(row => row.variantId ? <tr key={row.variantId} className="existences-variant" role="row">
@@ -184,10 +199,13 @@ function StockTable({ rows, filters }: { rows: ExistenceRow[]; filters: Existenc
             <td role="cell" data-label="Reservado">{row.reserved ?? '—'}</td>
             <td role="cell" data-label="Vendible" className="existences-amount"><Quantity value={row.sellable} /></td>
             <td role="cell" data-label="Ubicaciones con saldo">{row.recordedLocations}</td>
+            {costs && <td role="cell" data-label="Costo unit." className="existences-cost">
+              <CostCell row={row} currency={currency} canSet={canSet}
+                onSet={opener => onSetCost({ title: 'Costo de ' + row.product, rows: [row], opener })} /></td>}
             <td role="cell" className="existences-variant-state" data-label="Estado"><StockState row={row} /></td>
             <td role="cell" className="existences-variant-action"><a id={'existencia-' + row.variantId} className="existences-detail-link" href={existencesHref({ ...filters, detalle: row.variantId })}
               aria-label={'Ver ubicaciones de ' + row.sku}>Ver detalle</a></td>
-          </tr> : <tr key={id + '-empty'} className="existences-no-variants" role="row"><td role="cell" colSpan={7}>Producto sin variantes</td></tr>)}
+          </tr> : <tr key={id + '-empty'} className="existences-no-variants" role="row"><td role="cell" colSpan={columns}>Producto sin variantes</td></tr>)}
         </tbody>;
       })}
     </table>
@@ -274,6 +292,11 @@ function StockDetail({ data, branch }: { data: ExistenceDetail; branch: Store })
       </div>
       <p className="existences-detail-amount"><strong>Vendible en {branch.name}</strong> <Quantity value={item.sellable} /></p>
     </div>
+    <div className="existences-detail-money">
+      {item.unitPrice && <span>Precio de venta <b>{moneyOf(data.currency ?? 'ARS', item.unitPrice)}</b></span>}
+      {data.access.canSeeCosts && <span>Costo promedio <b>{item.unitCost ? moneyOf(data.currency ?? 'ARS', item.unitCost) : 'sin cargar'}</b>
+        {item.unitCost && item.costValue && (item.onHand ?? 0) > 0 ? <> · stock al costo <b>{moneyOf(data.currency ?? 'ARS', item.costValue)}</b></> : null}</span>}
+    </div>
     {data.access.canCatalog && item.variantId && item.productStatus === 'active' && item.variantStatus === 'active' &&
       <button type="button" className="button-secondary" disabled={labelBusy} onClick={event => void openLabel(event.currentTarget)}>
         {labelBusy ? 'Consultando variante…' : 'Preparar etiquetas'}
@@ -316,6 +339,28 @@ export function Existences({ branch, hash, stockRevision, locationRevision, cont
   const categories = useExistenceRead('categories', valid && !values.detalle, context, scope, readCategories, onlyExistences);
   const brands = useExistenceRead('brands', valid && !values.detalle, context, scope, readBrands, onlyExistences);
   const [scanExpired, setScanExpired] = useState<number>();
+  const [costTarget, setCostTarget] = useState<CostTarget | null>(null);
+  const [notice, setNotice] = useState('');
+  const [exporting, setExporting] = useState(false);
+  async function downloadCSV() {
+    if (exporting) return;
+    setExporting(true);
+    setNotice('');
+    try {
+      const file = await api.downloadExistencesCSV(branch.id, existenceSearch({ ...values, page: '1', detalle: '' }, false));
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'inventario-' + branch.code.toLowerCase() + '.csv';
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (cause) {
+      setNotice(cause instanceof ApiError && cause.code === 'inventory_export_too_large' ? cause.message
+        : cause instanceof Error ? 'No pudimos descargar el inventario: ' + cause.message : 'No pudimos descargar el inventario.');
+    } finally {
+      setExporting(false);
+    }
+  }
   const scanAccess = useMemo(() => ({
     isCurrent: () => context.scope === scope && listIntent() && !readExistencesHash(window.location.hash).values.detalle,
     onSessionExpired: () => setScanExpired(scope),
@@ -364,6 +409,8 @@ export function Existences({ branch, hash, stockRevision, locationRevision, cont
       {viewDetail ? detailData && <OperationLinks access={detailData.access} hasLocations={detailData.locations.some(location => location.active)}
         sku={detailData.item.sku} variantId={detailData.item.variantId ?? undefined} /> : data && <OperationLinks access={data.access} hasLocations={Boolean(locations.result?.data?.items.length)}
         location={values.ubicacion} />}
+      {!viewDetail && data && <button type="button" className="button-secondary existences-csv" aria-disabled={exporting}
+        onClick={() => void downloadCSV()}>{exporting ? 'Preparando CSV…' : '⤓ Descargar CSV'}</button>}
       <button type="button" className="button-secondary existences-refresh" aria-label="Actualizar existencias" aria-disabled={reading}
         onClick={() => { if (!reading) (viewDetail ? detail.retry : list.retry)(); }}>Actualizar</button>
     </div>}
@@ -394,11 +441,17 @@ export function Existences({ branch, hash, stockRevision, locationRevision, cont
           <button type="button" onClick={list.retry}>Reintentar existencias</button>
         </div>}
         {data && <>
+          <ValueSummary summary={data.summary} access={data.access} />
           <Summary summary={data.summary} />
+          {notice && <p className="existences-notice existences-done" role="status">{notice}</p>}
           <p className="existences-scope">Resumen de los resultados filtrados. El vendible excluye reservas y stock en ubicaciones o artículos no habilitados.</p>
-          {data.items.length ? <StockTable rows={data.items} filters={values} /> :
+          {data.items.length ? <StockTable rows={data.items} filters={values} access={data.access} currency={data.summary.currency ?? 'ARS'}
+            onSetCost={target => { setNotice(''); setCostTarget(target); }} /> :
             <p className="existences-notice" role="status">{page > 1 ? 'No hay resultados en esta página.' :
               filterActive ? 'No hay coincidencias con la búsqueda y los filtros.' : 'Todavía no hay productos para consultar.'}</p>}
+          {costTarget && <CostDialog storeId={branch.id} currency={data.summary.currency ?? 'ARS'} title={costTarget.title} rows={costTarget.rows}
+            returnTo={costTarget.opener} onClose={() => setCostTarget(null)}
+            onSaved={message => { setCostTarget(null); setNotice('✓ ' + message + ' El costo del inventario se actualizó.'); list.retry(); }} />}
           {page > 1 || data.hasMore ? <nav className="catalog-pagination" aria-label="Páginas de existencias">
             {page > 1 && <a href={existencesHref({ ...values, page: String(page - 1) })}>Anterior</a>}
             <span aria-current="page">Página {page}</span>

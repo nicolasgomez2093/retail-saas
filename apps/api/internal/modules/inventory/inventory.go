@@ -164,7 +164,9 @@ func (s Service) Balances(ctx context.Context, actor auth.Identity, storeID, loc
 
 type access struct {
 	manage, adjust, transfer, minimums, catalog bool
-	timezone                                    string
+	// costs shows unit costs (purchases:read); setCosts loads them by hand (purchases:manage).
+	costs, setCosts bool
+	timezone        string
 }
 
 func (s Service) withStore(ctx context.Context, actor auth.Identity, storeID string, writing bool, operation func(pgx.Tx, access) error) error {
@@ -189,7 +191,9 @@ func (s Service) withStore(ctx context.Context, actor auth.Identity, storeID str
 			coalesce(bool_or(rp.permission_code='inventory:adjust'),false),
 			coalesce(bool_or(rp.permission_code='inventory:transfer'),false),
 			coalesce(bool_or(rp.permission_code='inventory:manage_minimums'),false),
-			coalesce(bool_or(rp.permission_code IN ('catalog:read','catalog:manage')),false), t.timezone
+			coalesce(bool_or(rp.permission_code IN ('catalog:read','catalog:manage')),false),
+			coalesce(bool_or(rp.permission_code IN ('purchases:read','purchases:manage')),false),
+			coalesce(bool_or(rp.permission_code='purchases:manage'),false), t.timezone
 			FROM user_stores us
 			JOIN stores s ON (s.tenant_id,s.id)=(us.tenant_id,us.store_id)
 			JOIN users u ON (u.tenant_id,u.id)=(us.tenant_id,us.user_id)
@@ -197,7 +201,8 @@ func (s Service) withStore(ctx context.Context, actor auth.Identity, storeID str
 			LEFT JOIN user_roles ur ON (ur.tenant_id,ur.user_id)=(us.tenant_id,us.user_id)
 			LEFT JOIN role_permissions rp ON rp.role_code=ur.role_code
 			WHERE us.tenant_id=$1 AND us.user_id=$2 AND us.store_id=$3 AND s.status='active' AND t.status='active' AND u.status='active'
-			GROUP BY us.store_id,t.timezone`, actor.TenantID, actor.UserID, storeID).Scan(&readable, &allowed.manage, &allowed.adjust, &allowed.transfer, &allowed.minimums, &allowed.catalog, &allowed.timezone)
+			GROUP BY us.store_id,t.timezone`, actor.TenantID, actor.UserID, storeID).Scan(&readable, &allowed.manage, &allowed.adjust, &allowed.transfer, &allowed.minimums, &allowed.catalog,
+			&allowed.costs, &allowed.setCosts, &allowed.timezone)
 		if err != nil {
 			return mapNotFound(err)
 		}

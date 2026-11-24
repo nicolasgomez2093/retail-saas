@@ -5,11 +5,12 @@ import { NewPurchaseOrder } from './NewPurchaseOrder';
 import { PurchaseReceiptForm, ReceiptResult } from './PurchaseReceiptForm';
 import { PurchaseReceiptHistory } from './PurchaseReceiptHistory';
 import { Modal, ReceiptLabels } from './PurchaseParts';
+import { paymentSummary, SupplierPayments } from './SupplierPayments';
 import { itemLabel, lineCents, money, moneyText, orderCode, orderedUnits, pendingUnits, receivedUnits, statusLabels, statusTone, sumCents } from './purchaseFormat';
 import './purchases.css';
 
 const pageSize = 25;
-const emptyFilters: PurchaseOrderFilters = { status: '', query: '', fromDate: '', toDate: '' };
+const emptyFilters: PurchaseOrderFilters = { status: '', payment: '', query: '', fromDate: '', toDate: '' };
 
 type Screen = { kind: 'list' } | { kind: 'new' } | { kind: 'receive'; order: PurchaseOrder } | { kind: 'received'; order: PurchaseOrder; receipt: PurchaseReceipt };
 
@@ -41,7 +42,7 @@ function PurchaseOrdersForStore({ store, pendingOnly, supplierId, supplierName, 
   const key = JSON.stringify([offset, revision, applied]);
   const current = result?.key === key ? result : null;
   const page = current?.page;
-  const filtered = Boolean(applied.status || applied.query || applied.fromDate || applied.toDate || applied.supplierId);
+  const filtered = Boolean(applied.status || applied.payment || applied.query || applied.fromDate || applied.toDate || applied.supplierId);
 
   useEffect(() => { setFilters((value) => ({ ...value, status: pendingOnly ? 'pending' : value.status === 'pending' ? '' : value.status })); setOffset(0); }, [pendingOnly]);
   useEffect(() => {
@@ -125,10 +126,20 @@ function PurchaseOrdersForStore({ store, pendingOnly, supplierId, supplierName, 
         {canManage && <button type="button" className="pu-btn primary" onClick={() => setScreen({ kind: 'new' })}>＋ Nuevo pedido</button>}
       </div>
     </header>
-    <div className="pu-metrics">
+    <div className="pu-metrics pu-metrics-4">
       <div className="pu-metric"><small>Pedidos</small><strong>{overall?.orderCount ?? '—'}</strong><span>{overall ? overall.orderedUnits + ' u. pedidas' : 'Consultando…'}</span></div>
       <div className="pu-metric"><small>Pendientes</small><strong>{overall?.pendingOrders ?? '—'}</strong><span>{overall ? overall.pendingUnits + ' u. por recibir' : ''}</span></div>
       <div className="pu-metric"><small>Recibidos</small><strong>{overall?.receivedOrders ?? '—'}</strong><span>{overall ? overall.receivedUnits + ' u. ingresadas' : ''}</span></div>
+      <div className="pu-metric pu-metric-debt">
+        <small>Saldo a pagar a proveedores</small>
+        <strong>{overall ? moneyText(page?.currency ?? 'ARS', overall.balance) : '—'}</strong>
+        <span>{overall ? [
+          overall.ordersWithBalance === 1 ? '1 pedido con saldo' : overall.ordersWithBalance + ' pedidos con saldo',
+          Number(overall.checksToClear) > 0 ? (overall.checksToClearCount === 1 ? '1 cheque' : overall.checksToClearCount + ' cheques') + ' a cobrar por ' + moneyText(page?.currency ?? 'ARS', overall.checksToClear) : '',
+          overall.ordersWithoutTotal ? overall.ordersWithoutTotal + ' sin total' : '',
+        ].filter(Boolean).join(' · ') : ''}</span>
+        {overall && overall.ordersWithBalance > 0 && filters.payment !== 'due' && <button type="button" className="pu-link" onClick={() => { setFilters({ ...filters, payment: 'due' }); setOffset(0); }}>Ver pedidos con saldo</button>}
+      </div>
     </div>
     <div className="pu-card">
       <div className="pu-panelhead">
@@ -144,6 +155,11 @@ function PurchaseOrdersForStore({ store, pendingOnly, supplierId, supplierName, 
           <option value="pending">Por recibir</option>
           {(Object.keys(statusLabels) as (keyof typeof statusLabels)[]).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
         </select>
+        <select aria-label="Pagos al proveedor" value={filters.payment ?? ''} onChange={(event) => { setFilters({ ...filters, payment: event.target.value as PurchaseOrderFilters['payment'] }); setOffset(0); }}>
+          <option value="">Todos los pagos</option>
+          <option value="due">Con saldo a pagar</option>
+          <option value="paid">Pagados</option>
+        </select>
         <input type="date" aria-label="Desde" max={filters.toDate || '9999-12-31'} value={filters.fromDate} onChange={(event) => { setFilters({ ...filters, fromDate: event.target.value }); setOffset(0); }} />
         <input type="date" aria-label="Hasta" min={filters.fromDate || undefined} max="9999-12-31" value={filters.toDate} onChange={(event) => { setFilters({ ...filters, toDate: event.target.value }); setOffset(0); }} />
       </div>
@@ -158,11 +174,13 @@ function PurchaseOrdersForStore({ store, pendingOnly, supplierId, supplierName, 
         {!filtered && canManage && <button type="button" className="pu-btn primary" onClick={() => setScreen({ kind: 'new' })}>＋ Nuevo pedido</button>}
       </div> : <ul className="pu-rows">{page.items.map((order) => {
         const pending = pendingUnits(order);
-        return <li key={order.id} className="pu-row">
+        const payment = paymentSummary(order);
+        return <li key={order.id} className="pu-row pu-row-pay">
           <div><b>{orderCode(order.number)} · {order.supplierName}</b>
             <small>{dates?.format(new Date(order.orderedAt))} · {order.items.length} {order.items.length === 1 ? 'renglón' : 'renglones'}{order.reference ? ' · ' + order.reference : ''}</small></div>
           <span className={'pu-pill ' + statusTone[order.status]}>{statusLabels[order.status]}</span>
           <span>{orderedUnits(order)} u. pedidas{pending > 0 && <small>{pending} por recibir</small>}{order.status === 'CANCELLED' && receivedUnits(order) > 0 && <small>{receivedUnits(order)} recibidas</small>}</span>
+          <span className="pu-row-payment"><span className={'pu-pill ' + payment.tone}>{payment.label}</span>{payment.detail && <small>{payment.detail}</small>}</span>
           <button type="button" className="pu-btn" onClick={(event) => setDetail({ order, opener: event.currentTarget })} aria-label={'Ver pedido ' + orderCode(order.number)}>Ver pedido</button>
         </li>;
       })}</ul>)}
@@ -260,6 +278,8 @@ function OrderDialog({ order: initial, timezone, canManage, returnTo, revision, 
           </div>;
         })}</div>
         <div className="pu-statrow"><b>Total</b><b>{orderedUnits(order)} u. · {money(order.currency, total)}{missingCost ? ' (parcial)' : ''}</b></div>
+        <SupplierPayments order={order} timezone={timezone} canManage={canManage}
+          onChanged={(updated, message) => { setOrder(updated); onChanged(updated, message); }} />
         <PurchaseReceiptHistory order={order} revision={revision} timezone={timezone}
           onLabels={(lines, button) => setLabels({ lines, button })} />
       </>}

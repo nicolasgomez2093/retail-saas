@@ -29,14 +29,26 @@ export type PurchaseOrderItem = PurchaseOrderInput['items'][number] & {
 export type PurchaseOrder = Omit<PurchaseOrderInput, 'items' | 'reference'> & {
   id: string; number: number; reference: string; supplierName: string; currency: string; status: PurchaseOrderStatus; orderedAt: string; createdBy: string;
   cancelledAt: string | null; cancelReason: string; items: PurchaseOrderItem[];
+  /** What the order costs at its agreed unit costs; null while a line has no cost. */
+  payable: string | null; paid: string; balance: string | null; paymentStatus: SupplierPaymentStatus; payments: SupplierPayment[];
+};
+export type SupplierPaymentStatus = 'unknown' | 'none' | 'unpaid' | 'partial' | 'paid' | 'credit';
+export type SupplierPaymentMethod = 'cash' | 'transfer' | 'check' | 'card' | 'other';
+export type SupplierPayment = {
+  id: string; method: SupplierPaymentMethod; amount: string; paidOn: string; checkDueOn: string | null; reference: string; note: string;
+  createdBy: string; createdAt: string; voidedAt: string | null; voidReason: string;
+};
+export type SupplierPaymentInput = {
+  storeId: string; method: SupplierPaymentMethod; amount: string; paidOn: string; checkDueOn?: string; reference?: string; note?: string;
 };
 export type PurchaseOrderPage = {
   items: PurchaseOrder[]; hasMore: boolean; canManage: boolean; timezone: string; currency: string;
-  summary: { orderCount: number; orderedUnits: number; receivedUnits: number; pendingUnits: number; pendingOrders: number; receivedOrders: number };
+  summary: { orderCount: number; orderedUnits: number; receivedUnits: number; pendingUnits: number; pendingOrders: number; receivedOrders: number;
+    payable: string; paid: string; balance: string; ordersWithBalance: number; ordersWithoutTotal: number; checksToClear: string; checksToClearCount: number };
 };
 export type RejectionReason = 'damaged' | 'wrong_item' | 'excess' | 'other';
 export type PurchaseOrderStatusFilter = '' | 'pending' | PurchaseOrder['status'];
-export type PurchaseOrderFilters = { supplierId?: string; status: PurchaseOrderStatusFilter; query: string; fromDate: string; toDate: string };
+export type PurchaseOrderFilters = { supplierId?: string; status: PurchaseOrderStatusFilter; payment?: '' | 'due' | 'paid'; query: string; fromDate: string; toDate: string };
 export type PurchaseReceiptInput = {
   storeId: string; locationId: string; note: string;
   items: { orderItemId: string; accepted: number; rejected: number; unitCost?: string | null; rejectionReason?: RejectionReason }[];
@@ -136,13 +148,19 @@ export type ExistenceRow = {
   productId: string; product: string; productStatus: 'active' | 'inactive';
   variantId: string | null; variantStatus: 'active' | 'inactive' | null; sku: string; size: string; color: string;
   onHand: number | null; reserved: number | null; sellable: number | null; lowStock: boolean; recordedLocations: number; minimum: number | null;
+  barcode?: string;
+  /** Branch average cost and its value for the units on hand; null when unknown or hidden. */
+  unitCost?: string | null; costValue?: string | null; unitPrice?: string | null; retailValue?: string | null;
 };
-export type ExistenceAccess = { canAdjust: boolean; canManageMinimums: boolean; canManageLocations: boolean; canTransfer: boolean; canCatalog: boolean };
+export type ExistenceAccess = { canAdjust: boolean; canManageMinimums: boolean; canManageLocations: boolean; canTransfer: boolean; canCatalog: boolean;
+  canSeeCosts?: boolean; canSetCosts?: boolean };
 export type ExistencePage = {
   items: ExistenceRow[]; hasMore: boolean; access: ExistenceAccess;
-  summary: { productsWithStock: number; variantsSellable: number; variantsZero: number; variantsUnrecorded: number; variantsLow: number };
+  summary: { productsWithStock: number; variantsSellable: number; variantsZero: number; variantsUnrecorded: number; variantsLow: number;
+    units?: number; unitsWithoutCost?: number; costValue?: string | null; unitsWithoutPrice?: number; retailValue?: string; currency?: string };
 };
-export type ExistenceDetail = { item: ExistenceRow; access: ExistenceAccess;
+export type CostRevision = { variantId: string; previousUnitCost: string | null; unitCost: string; quantityOnHand: number };
+export type ExistenceDetail = { item: ExistenceRow; access: ExistenceAccess; currency?: string;
   locations: { id: string; name: string; code: string; active: boolean; isSellable: boolean; onHand: number | null;
     reserved: number | null; sellable: number | null; minimum: number | null; lowStock: boolean;
     revision: string | null; minimumVersion: string | null }[];
@@ -430,6 +448,7 @@ function purchaseOrderParams(storeId: string, filters: PurchaseOrderFilters) {
   return new URLSearchParams({
     store_id: storeId, status: filters.status, q: filters.query, from_date: filters.fromDate, to_date: filters.toDate,
     ...(filters.supplierId ? { supplier_id: filters.supplierId } : {}),
+    ...(filters.payment ? { payment: filters.payment } : {}),
   });
 }
 
@@ -472,6 +491,12 @@ export const api = {
     '/purchase-orders/' + encodeURIComponent(orderId) + '?' + new URLSearchParams({ store_id: storeId })),
   cancelPurchaseOrder: (orderId: string, storeId: string, reason: string) => request<PurchaseOrder>(
     '/purchase-orders/' + encodeURIComponent(orderId) + '/cancel', json('POST', { storeId, reason })),
+  registerSupplierPayment: (orderId: string, input: SupplierPaymentInput, key: string) =>
+    request<PurchaseOrder>('/purchase-orders/' + encodeURIComponent(orderId) + '/payments', {
+      ...json('POST', input), headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+    }),
+  voidSupplierPayment: (orderId: string, paymentId: string, storeId: string, reason: string) => request<PurchaseOrder>(
+    '/purchase-orders/' + encodeURIComponent(orderId) + '/payments/' + encodeURIComponent(paymentId) + '/void', json('POST', { storeId, reason })),
   purchaseReceipts: (storeId: string, orderId: string, offset: number) => request<PurchaseReceiptPage>(
     '/purchase-orders/' + encodeURIComponent(orderId) + '/receipts?' + new URLSearchParams({ store_id: storeId, offset: String(offset) })),
   downloadPurchaseReceiptsCSV: async (storeId: string, orderId: string) => {
@@ -545,6 +570,13 @@ export const api = {
     '/inventory/existences?' + new URLSearchParams({ store_id: storeId }) + (search ? '&' + search : ''), { signal }),
   existence: (storeId: string, variantId: string, signal?: AbortSignal) => request<ExistenceDetail>(
     '/inventory/existences/' + encodeURIComponent(variantId) + '?' + new URLSearchParams({ store_id: storeId }), { signal }),
+  /** Every variant matching the Existencias filters (not only the page), as CSV. */
+  downloadExistencesCSV: async (storeId: string, search: string) => {
+    const response = await fetchAPI('/inventory/existences/csv?' + new URLSearchParams({ store_id: storeId }) + (search ? '&' + search : ''));
+    return response.blob();
+  },
+  setInventoryCosts: (storeId: string, items: { variantId: string; unitCost: string }[], reason = '') =>
+    request<{ items: CostRevision[] }>('/inventory/costs', json('PUT', { storeId, reason, items })),
 
   createLocation: (data: LocationInput) => request<StockLocation>('/locations', json('POST', data)),
   stockBalances: (storeId: string, locationId: string, lowOnly = false) => request<{ items: StockBalance[] }>(

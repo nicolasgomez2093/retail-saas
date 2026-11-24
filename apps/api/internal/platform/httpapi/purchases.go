@@ -70,6 +70,20 @@ func registerPurchases(router *gin.RouterGroup, db *pgxpool.Pool, authService *a
 			respondPurchase(c, http.StatusCreated, result, err)
 		}
 	}))
+	router.POST("/purchase-orders/:id/payments", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		var input purchases.PaymentInput
+		if readAdminJSON(c, &input) {
+			result, err := service.RegisterPayment(c.Request.Context(), actor, c.Param("id"), c.GetHeader("Idempotency-Key"), input)
+			respondPurchase(c, http.StatusCreated, result, err)
+		}
+	}))
+	router.POST("/purchase-orders/:id/payments/:paymentId/void", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		var input purchases.VoidPaymentInput
+		if readAdminJSON(c, &input) {
+			result, err := service.VoidPayment(c.Request.Context(), actor, c.Param("id"), c.Param("paymentId"), input)
+			respondPurchase(c, http.StatusOK, result, err)
+		}
+	}))
 	router.GET("/purchase-orders/:id/receipts", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
 		limit, limitErr := strconv.Atoi(c.DefaultQuery("limit", "25"))
 		offset, offsetErr := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -88,7 +102,7 @@ func registerPurchases(router *gin.RouterGroup, db *pgxpool.Pool, authService *a
 }
 
 func purchaseOrderFilter(c *gin.Context) purchases.ListFilter {
-	return purchases.ListFilter{SupplierID: c.Query("supplier_id"), Status: c.Query("status"), Query: c.Query("q"),
+	return purchases.ListFilter{SupplierID: c.Query("supplier_id"), Status: c.Query("status"), Payment: c.Query("payment"), Query: c.Query("q"),
 		FromDate: c.Query("from_date"), ToDate: c.Query("to_date")}
 }
 
@@ -112,6 +126,8 @@ func respondPurchase(c *gin.Context, status int, result any, err error) {
 		fail(c, 409, "inventory_balance_conflict", err.Error())
 	case errors.Is(err, purchases.ErrClosed):
 		fail(c, 409, "purchase_order_closed", err.Error())
+	case errors.Is(err, purchases.ErrPaymentExceeds):
+		fail(c, 409, "purchase_payment_exceeds", err.Error())
 	case errors.Is(err, purchases.ErrKey):
 		fail(c, 409, "idempotency_conflict", err.Error())
 	default:

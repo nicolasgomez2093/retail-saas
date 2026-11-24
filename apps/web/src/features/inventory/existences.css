@@ -40,3 +40,59 @@
   .existences .existences-table .existences-group th{padding:10px 14px}
   .existences .existences-summary dd{font-size:20px}
 }
+
+/* Stock value (cost, selling price, potential profit), cost column and the cost dialog. */
+.existences .existences-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px}
+.existences .existences-value{background:#fff;border:1px solid var(--p-line);border-radius:14px;padding:16px 18px;display:grid;gap:3px;align-content:start;min-width:0}
+.existences .existences-value:first-child{border-color:#b8d3c3;background:#f6faf6}
+.existences .existences-value[data-incomplete]{border-color:#f0d9ad;background:#fffaf0}
+.existences .existences-value>span{font-size:12px;color:var(--p-muted);font-weight:700}
+.existences .existences-value>strong{font-size:26px;letter-spacing:-.8px;line-height:1.15;overflow-wrap:anywhere}
+.existences .existences-value>small{font-size:12px;color:var(--p-muted)}
+.existences .existences-value>.existences-value-hint{color:#8a5b17;font-weight:700}
+.existences .existences-table thead th.existences-cost,.existences .existences-table td.existences-cost{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.existences .existences-table td.existences-cost small{font-size:11.5px;color:var(--p-muted);display:block;margin-top:2px}
+.existences .existences-muted{color:var(--p-muted)}
+.app-shell .existences button.existences-cost-action{display:block;margin:3px 0 0 auto;min-height:0;padding:0;border:0;background:none;color:var(--p-green);
+  font:inherit;font-size:12px;font-weight:800;cursor:pointer;width:auto}
+.app-shell .existences button.existences-cost-action:hover{text-decoration:underline}
+.app-shell .existences .existences-table .existences-group th>button.existences-group-cost{float:right;display:inline-flex;min-height:30px;padding:0 12px;margin:-3px 0;
+  border:1px solid #b8d3c3;border-radius:8px;background:#fff;color:var(--p-green);font:inherit;font-size:12px;font-weight:800;cursor:pointer;width:auto}
+.existences .existences-table .existences-group th>button.existences-group-cost::after{content:none}
+.existences .existences-table .existences-group th>button.existences-group-cost:hover{background:#f3f8f3}
+.existences .existences-done{background:#edf5ed;color:#1b6b3f;font-weight:700}
+.existences .existences-detail-money{display:flex;flex-wrap:wrap;gap:8px 22px;margin:2px 0 14px;font-size:14px;color:var(--p-muted)}
+.existences .existences-detail-money b{color:var(--p-ink)}
+.existences-cost-all{display:flex;align-items:end;gap:10px;margin:14px 0;flex-wrap:wrap}
+.existences-cost-all .pu-label{flex:1 1 200px}
+.existences-cost-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.existences-cost-table :is(th,td){padding:10px 8px;border-top:1px solid var(--p-line);text-align:left;vertical-align:middle}
+.existences-cost-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--p-muted);border-top:0}
+.existences-cost-table tbody th small,.existences-cost-table td small{display:block;color:var(--p-muted);font-size:12px;font-weight:500;margin-top:2px}
+.existences-cost-table td:nth-child(2){white-space:nowrap;font-variant-numeric:tabular-nums}
+.existences-cost-table td:last-child{width:46%}
+.existences-cost-table [data-invalid]{border-color:var(--danger,#b4232c)}
+.existences-cost-reason{margin-top:14px}
+.existences-cost-total{margin-right:auto;font-weight:800;color:var(--p-ink,#20342d)}
+@container existences (max-width: 650px){
+  .existences .existences-table .existences-group th>button.existences-group-cost{float:none;margin:8px 0 0;display:flex}
+  .existences .existences-value>strong{font-size:22px}
+}
+@media (max-width:560px){
+  .existences-cost-table thead{display:none}
+  .existences-cost-table tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;border-top:1px solid var(--p-line);padding:10px 0}
+  .existences-cost-table :is(th,td){border:0;padding:0}
+  .existences-cost-table td:last-child{grid-column:1/-1;width:auto}
+}
+/* With the cost column the table keeps every column in view at desktop widths. */
+.existences .existences-table.with-costs :where(th,td){padding-inline:12px}
+.existences .existences-table.with-costs thead th{letter-spacing:.3px}
+.existences .existences-table.with-costs .existences-variant-action .existences-detail-link{padding:0 10px}
+.existences .existences-table.with-costs thead th:first-child{width:24%}
+.existences .existences-table.with-costs thead th:nth-child(2){width:8%}
+.existences .existences-table.with-costs thead th:nth-child(3){width:10%}
+.existences .existences-table.with-costs thead th:nth-child(4){width:9%}
+.existences .existences-table.with-costs thead th:nth-child(5){width:11%}
+.existences .existences-table.with-costs thead th:nth-child(6){width:14%}
+.existences .existences-table.with-costs thead th:nth-child(7){width:11%}
+.existences .existences-table.with-costs thead th:nth-child(8){width:13%}

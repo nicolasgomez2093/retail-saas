@@ -1547,6 +1547,91 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/inventory/existences/csv:
+    get:
+      operationId: exportBranchExistencesCSV
+      summary: Descargar en CSV todas las existencias que coinciden con los filtros.
+      description: >
+        Requiere inventory:read. Mismos filtros que la consulta paginada; page se ignora. Una fila por variante con código de barras,
+        cantidades, mínimo, precio y valor de venta. Las columnas costo_unitario y valor_costo solo aparecen para quien tiene
+        purchases:read. Más de 20.000 variantes responde 409 inventory_export_too_large.
+      parameters:
+        - $ref: '#/components/parameters/InventoryStoreQuery'
+        - {name: q, in: query, schema: {type: string, maxLength: 160}}
+        - {name: categoryId, in: query, schema: {type: string, format: uuid}}
+        - {name: brandId, in: query, schema: {type: string, format: uuid}}
+        - {name: producto, in: query, schema: {type: string, enum: [active, inactive]}}
+        - {name: variante, in: query, schema: {type: string, enum: [active, inactive]}}
+        - {name: saldo, in: query, schema: {type: string, enum: [positive, zero, unrecorded]}}
+        - {name: ubicacion, in: query, schema: {type: string, format: uuid}}
+        - {name: bajo, in: query, schema: {type: string, enum: ['0', '1']}}
+      responses:
+        '200':
+          description: Archivo inventario.csv en UTF-8 con BOM.
+          content:
+            text/csv:
+              schema: {type: string}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/inventory/costs:
+    put:
+      operationId: setInventoryCosts
+      summary: Cargar el costo unitario del stock actual de variantes.
+      description: >
+        Requiere purchases:manage. Fija el costo promedio de las unidades que cada variante tiene hoy en la sucursal, por ejemplo
+        stock inicial sin costo. Las compras siguientes promedian desde ese valor. Cada cambio queda registrado con el costo
+        anterior. Una variante sin unidades responde 409 inventory_cost_without_stock.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [storeId, items]
+              properties:
+                storeId: {type: string, format: uuid}
+                reason: {type: string, maxLength: 300}
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [variantId, unitCost]
+                    properties:
+                      variantId: {type: string, format: uuid}
+                      unitCost: {$ref: '#/components/schemas/CashAmount'}
+      responses:
+        '200':
+          description: Costos aplicados.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [variantId, previousUnitCost, unitCost, quantityOnHand]
+                      properties:
+                        variantId: {type: string, format: uuid}
+                        previousUnitCost: {type: [string, 'null']}
+                        unitCost: {$ref: '#/components/schemas/CashAmount'}
+                        quantityOnHand: {type: integer, minimum: 1}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /api/v1/inventory/existences/{variantId}:
     get:
       operationId: getBranchExistence
@@ -2527,6 +2612,10 @@ paths:
           in: query
           description: Estado exacto o pending para incluir abiertas y parcialmente recibidas. Omitir para ver todas.
           schema: {type: string, enum: [pending, OPEN, PARTIALLY_RECEIVED, RECEIVED, CANCELLED, '']}
+        - name: payment
+          in: query
+          description: due para pedidos con saldo a pagar o sin total calculable; paid para pedidos con total mayor que cero ya pagados. Omitir para ver todos.
+          schema: {type: string, enum: [due, paid, '']}
         - name: q
           in: query
           description: Coincidencia parcial en el nombre histórico del proveedor, la referencia, el número (OC-0001), el SKU o el producto. Ignora mayúsculas y minúsculas.
@@ -2563,8 +2652,16 @@ paths:
                   currency: {type: string, description: 'Moneda del comercio, para armar pedidos nuevos.'}
                   summary:
                     type: object
-                    required: [orderCount, orderedUnits, receivedUnits, pendingUnits, pendingOrders, receivedOrders]
+                    required: [orderCount, orderedUnits, receivedUnits, pendingUnits, pendingOrders, receivedOrders, payable, paid, balance,
+                      ordersWithBalance, ordersWithoutTotal, checksToClear, checksToClearCount]
                     properties:
+                      payable: {$ref: '#/components/schemas/CashAmount', description: Suma de los totales calculables.}
+                      paid: {$ref: '#/components/schemas/CashAmount'}
+                      balance: {$ref: '#/components/schemas/CashAmount', description: 'Lo que falta pagar de los pedidos con total; un saldo a favor no compensa otra deuda.'}
+                      ordersWithBalance: {type: integer, format: int64, minimum: 0}
+                      ordersWithoutTotal: {type: integer, format: int64, minimum: 0, description: Pedidos con algún renglón sin costo.}
+                      checksToClear: {$ref: '#/components/schemas/CashAmount', description: Cheques vigentes cuya fecha de cobro es posterior a hoy.}
+                      checksToClearCount: {type: integer, format: int64, minimum: 0}
                       orderCount: {type: integer, format: int64, minimum: 0}
                       orderedUnits: {type: integer, format: int64, minimum: 0}
                       receivedUnits: {type: integer, format: int64, minimum: 0}
@@ -2740,6 +2837,75 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/purchase-orders/{id}/payments:
+    post:
+      operationId: registerSupplierPayment
+      summary: Registrar un pago al proveedor de un pedido.
+      description: >
+        Requiere purchases:manage. Admite pagos parciales en efectivo, transferencia, cheque (con fecha de cobro opcional), tarjeta u
+        otro medio. La fecha de pago no puede ser futura en la zona horaria del comercio. Si el pedido tiene total, el pago no puede
+        superar el saldo (409 purchase_payment_exceeds). No mueve stock ni la caja. Idempotency-Key recupera el pago original.
+      parameters:
+        - $ref: '#/components/parameters/CashIdempotencyKey'
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [storeId, method, amount, paidOn]
+              properties:
+                storeId: {type: string, format: uuid}
+                method: {type: string, enum: [cash, transfer, check, card, other]}
+                amount: {$ref: '#/components/schemas/CashAmount'}
+                paidOn: {type: string, format: date}
+                checkDueOn: {type: string, format: date, description: Solo para cheques.}
+                reference: {type: string, maxLength: 80, description: 'Comprobante, número de operación o de cheque.'}
+                note: {type: string, maxLength: 300}
+      responses:
+        '201':
+          description: Pedido con el pago registrado o recuperado por su clave de idempotencia.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PurchaseOrder'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
+  /api/v1/purchase-orders/{id}/payments/{paymentId}/void:
+    post:
+      operationId: voidSupplierPayment
+      summary: Anular un pago al proveedor cargado por error.
+      description: Requiere purchases:manage y un motivo. El pago queda en el historial y deja de sumar. Anular dos veces devuelve el pedido sin cambios.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: paymentId, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [storeId, reason]
+              properties:
+                storeId: {type: string, format: uuid}
+                reason: {type: string, minLength: 1, maxLength: 300}
+      responses:
+        '200':
+          description: Pedido con el pago anulado.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PurchaseOrder'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
   /api/v1/purchase-orders/{id}/receipts:
     parameters:
@@ -4214,8 +4380,23 @@ components:
               unitsWithoutCost: {type: integer}
     PurchaseOrder:
       type: object
-      required: [id, number, storeId, supplierId, supplierName, reference, currency, status, orderedAt, createdBy, cancelledAt, cancelReason, items]
+      required: [id, number, storeId, supplierId, supplierName, reference, currency, status, orderedAt, createdBy, cancelledAt, cancelReason, items,
+        payable, paid, balance, paymentStatus, payments]
       properties:
+        payable:
+          description: 'Total a los costos acordados: lo pedido, o solo lo aceptado si el pedido se canceló. Nulo si un renglón que cuenta no tiene costo.'
+          oneOf:
+            - $ref: '#/components/schemas/CashAmount'
+            - type: 'null'
+        paid: {$ref: '#/components/schemas/CashAmount'}
+        balance:
+          description: Total menos lo pagado. Negativo es saldo a favor. Nulo sin total.
+          type: [string, 'null']
+          pattern: '^-?\d{1,16}\.\d{2}$'
+        paymentStatus: {type: string, enum: [unknown, none, unpaid, partial, paid, credit]}
+        payments:
+          type: array
+          items: {$ref: '#/components/schemas/SupplierPayment'}
         id: {type: string, format: uuid}
         number: {type: integer, minimum: 1, description: 'Número correlativo del comercio, mostrado como OC-0001.'}
         storeId: {type: string, format: uuid}
@@ -4248,6 +4429,21 @@ components:
                 oneOf:
                   - $ref: '#/components/schemas/CashAmount'
                   - type: 'null'
+    SupplierPayment:
+      type: object
+      required: [id, method, amount, paidOn, checkDueOn, reference, note, createdBy, createdAt, voidedAt, voidReason]
+      properties:
+        id: {type: string, format: uuid}
+        method: {type: string, enum: [cash, transfer, check, card, other]}
+        amount: {$ref: '#/components/schemas/CashAmount'}
+        paidOn: {type: string, format: date}
+        checkDueOn: {type: [string, 'null'], format: date}
+        reference: {type: string}
+        note: {type: string}
+        createdBy: {type: string, format: uuid}
+        createdAt: {type: string, format: date-time}
+        voidedAt: {type: [string, 'null'], format: date-time}
+        voidReason: {type: string}
     PurchaseReceipt:
       type: object
       required: [id, orderId, locationId, locationName, note, receivedAt, receivedBy, items]
@@ -5057,6 +5253,11 @@ components:
         lowStock: {type: boolean}
         recordedLocations: {type: integer, minimum: 0}
         minimum: {type: [integer, 'null'], description: Mínimo en la ubicación filtrada.}
+        barcode: {type: string, description: Código de barras principal o vacío.}
+        unitCost: {type: [string, 'null'], description: Costo promedio de la sucursal; nulo si se desconoce o si no hay purchases:read.}
+        costValue: {type: [string, 'null'], description: Unidades físicas por costo unitario.}
+        unitPrice: {type: [string, 'null'], description: Precio de la lista de la sucursal.}
+        retailValue: {type: [string, 'null']}
     ExistenceLocation:
       type: object
       required: [id, name, code, active, isSellable, onHand, reserved, sellable, minimum, lowStock, revision, minimumVersion]
@@ -5082,6 +5283,8 @@ components:
         canManageLocations: {type: boolean}
         canTransfer: {type: boolean}
         canCatalog: {type: boolean}
+        canSeeCosts: {type: boolean, description: purchases:read.}
+        canSetCosts: {type: boolean, description: purchases:manage.}
     ExistencePage:
       type: object
       required: [items, summary, access, hasMore]
@@ -5099,6 +5302,12 @@ components:
             variantsZero: {type: integer, minimum: 0}
             variantsUnrecorded: {type: integer, minimum: 0}
             variantsLow: {type: integer, minimum: 0}
+            units: {type: integer, minimum: 0, description: Unidades físicas de los resultados.}
+            unitsWithoutCost: {type: integer, minimum: 0}
+            costValue: {type: [string, 'null'], description: Valor al costo de las unidades con costo; nulo sin purchases:read.}
+            unitsWithoutPrice: {type: integer, minimum: 0}
+            retailValue: {$ref: '#/components/schemas/CashAmount'}
+            currency: {type: string}
         access: {$ref: '#/components/schemas/ExistenceAccess'}
         hasMore: {type: boolean}
     StockBalance:

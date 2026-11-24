@@ -76,6 +76,13 @@ type Order struct {
 	CancelledAt  *time.Time `json:"cancelledAt"`
 	CancelReason string     `json:"cancelReason"`
 	Items        []Item     `json:"items"`
+	// Payable is what the order costs at its agreed unit costs: ordered units,
+	// or only the accepted ones once cancelled. Nil while a line has no cost.
+	Payable       *string   `json:"payable"`
+	Paid          string    `json:"paid"`
+	Balance       *string   `json:"balance"`
+	PaymentStatus string    `json:"paymentStatus"`
+	Payments      []Payment `json:"payments"`
 }
 
 type Page struct {
@@ -97,11 +104,22 @@ type OrderSummary struct {
 	// their remaining units are not pending.
 	PendingOrders  int64 `json:"pendingOrders"`
 	ReceivedOrders int64 `json:"receivedOrders"`
+	// Supplier debt of the matching orders. Balance adds only what is still
+	// owed on orders with a known total; a credit on one order never offsets
+	// the debt of another.
+	Payable            string `json:"payable"`
+	Paid               string `json:"paid"`
+	Balance            string `json:"balance"`
+	OrdersWithBalance  int64  `json:"ordersWithBalance"`
+	OrdersWithoutTotal int64  `json:"ordersWithoutTotal"`
+	ChecksToClear      string `json:"checksToClear"`
+	ChecksToClearCount int64  `json:"checksToClearCount"`
 }
 
 type ListFilter struct {
 	SupplierID    string
 	Status        string
+	Payment       string
 	Query         string
 	FromDate      string
 	ToDate        string
@@ -112,7 +130,20 @@ type Service struct{ db *pgxpool.Pool }
 
 func New(db *pgxpool.Pool) Service { return Service{db: db} }
 
-const orderScope = ` FROM purchase_orders o WHERE o.tenant_id=$1 AND o.store_id=$2`
+// orderMoney computes, for the order o, what it costs at the agreed unit
+// costs (NULL while a line that counts has no cost) and what was paid.
+const orderMoney = ` CROSS JOIN LATERAL (SELECT
+	(SELECT CASE WHEN bool_and(i.unit_cost IS NOT NULL) FILTER (WHERE o.status<>'CANCELLED' OR rq.accepted>0) IS FALSE THEN NULL
+		ELSE coalesce(sum(i.unit_cost*CASE WHEN o.status='CANCELLED' THEN rq.accepted ELSE i.ordered_qty END),0)::numeric(18,2) END
+	 FROM purchase_order_items i CROSS JOIN LATERAL (
+		SELECT coalesce(sum(r.accepted_qty),0) AS accepted FROM purchase_receipt_items r
+		WHERE (r.tenant_id,r.purchase_order_id,r.order_item_id)=(i.tenant_id,i.purchase_order_id,i.id)
+	 ) rq WHERE (i.tenant_id,i.purchase_order_id)=(o.tenant_id,o.id)) AS payable,
+	(SELECT coalesce(sum(p.amount),0)::numeric(18,2) FROM purchase_order_payments p
+	 WHERE (p.tenant_id,p.purchase_order_id)=(o.tenant_id,o.id) AND p.voided_at IS NULL) AS paid
+) money`
+
+const orderScope = ` FROM purchase_orders o` + orderMoney + ` WHERE o.tenant_id=$1 AND o.store_id=$2`
 
 const orderListFilters = `
 	AND ($3='' OR o.status=$3 OR ($3='pending' AND o.status IN ('OPEN','PARTIALLY_RECEIVED')))
@@ -124,7 +155,9 @@ const orderListFilters = `
 	))
 	AND ($5::text='' OR (o.ordered_at AT TIME ZONE $7)::date >= NULLIF($5,'')::date)
 	AND ($6::text='' OR (o.ordered_at AT TIME ZONE $7)::date <= NULLIF($6,'')::date)
-	AND (NULLIF($8::text,'') IS NULL OR o.supplier_id=NULLIF($8,'')::uuid)`
+	AND (NULLIF($8::text,'') IS NULL OR o.supplier_id=NULLIF($8,'')::uuid)
+	AND ($9::text='' OR ($9='due' AND (money.payable IS NULL OR money.payable>money.paid))
+		OR ($9='paid' AND money.payable>0 AND money.paid>=money.payable))`
 
 const selectOrders = `SELECT o.id,o.number,o.store_id,o.supplier_id,o.supplier_name,o.reference,o.currency,o.status,o.ordered_at,o.created_by,
 	o.cancelled_at,o.cancel_reason,
@@ -134,7 +167,12 @@ const selectOrders = `SELECT o.id,o.number,o.store_id,o.supplier_id,o.supplier_n
 	 FROM purchase_order_items i JOIN product_variants v ON (v.tenant_id,v.id)=(i.tenant_id,i.variant_id) CROSS JOIN LATERAL (
 	    SELECT sum(r.accepted_qty) AS quantity,sum(r.rejected_qty) AS rejected FROM purchase_receipt_items r
 	    WHERE (r.tenant_id,r.purchase_order_id,r.order_item_id)=(i.tenant_id,i.purchase_order_id,i.id)
-	 ) received WHERE (i.tenant_id,i.purchase_order_id)=(o.tenant_id,o.id))` + orderScope
+	 ) received WHERE (i.tenant_id,i.purchase_order_id)=(o.tenant_id,o.id)),
+	money.payable::text,money.paid::text,
+	(SELECT coalesce(jsonb_agg(jsonb_build_object('id',p.id,'method',p.method,'amount',p.amount::text,'paidOn',p.paid_on::text,
+		'checkDueOn',p.check_due_on::text,'reference',p.reference,'note',p.note,'createdBy',p.created_by,'createdAt',p.created_at,
+		'voidedAt',p.voided_at,'voidReason',p.void_reason) ORDER BY p.paid_on,p.created_at,p.id),'[]'::jsonb)
+	 FROM purchase_order_payments p WHERE (p.tenant_id,p.purchase_order_id)=(o.tenant_id,o.id))` + orderScope
 
 func (s Service) List(ctx context.Context, actor auth.Identity, storeID string, filter ListFilter) (Page, error) {
 	if filter.Limit < 1 || filter.Limit > 50 || filter.Offset < 0 || filter.Offset > 100000 {
@@ -177,6 +215,11 @@ func normalizeOrderFilter(storeID string, filter ListFilter) (ListFilter, error)
 	default:
 		return ListFilter{}, ErrInvalid
 	}
+	switch filter.Payment {
+	case "", "due", "paid":
+	default:
+		return ListFilter{}, ErrInvalid
+	}
 	filter.Query = strings.TrimSpace(filter.Query)
 	if !utf8.ValidString(filter.Query) || utf8.RuneCountInString(filter.Query) > 120 || strings.IndexFunc(filter.Query, unicode.IsControl) >= 0 {
 		return ListFilter{}, ErrInvalid
@@ -196,17 +239,17 @@ func normalizeOrderFilter(storeID string, filter ListFilter) (ListFilter, error)
 }
 
 func orderFilterArgs(tenantID, storeID, timezone string, filter ListFilter) []any {
-	return []any{tenantID, storeID, filter.Status, filter.Query, filter.FromDate, filter.ToDate, timezone, filter.SupplierID}
+	return []any{tenantID, storeID, filter.Status, filter.Query, filter.FromDate, filter.ToDate, timezone, filter.SupplierID, filter.Payment}
 }
 
 func queryOrderList(ctx context.Context, tx pgx.Tx, args []any, limit *int, offset int) (pgx.Rows, error) {
-	return tx.Query(ctx, selectOrders+orderListFilters+" ORDER BY o.ordered_at DESC,o.id DESC LIMIT $9 OFFSET $10", append(args, limit, offset)...)
+	return tx.Query(ctx, selectOrders+orderListFilters+" ORDER BY o.ordered_at DESC,o.id DESC LIMIT $10 OFFSET $11", append(args, limit, offset)...)
 }
 
 func summarizeOrders(ctx context.Context, tx pgx.Tx, args []any) (OrderSummary, error) {
 	var summary OrderSummary
 	err := tx.QueryRow(ctx, `WITH matching AS (
-		SELECT o.tenant_id,o.id,o.status`+orderScope+orderListFilters+`
+		SELECT o.tenant_id,o.id,o.status,money.payable,money.paid`+orderScope+orderListFilters+`
 	), units AS (
 		SELECT coalesce(sum(i.ordered_qty),0) AS ordered,coalesce(sum(accepted.quantity),0)::bigint AS received,
 			coalesce(sum(i.ordered_qty-coalesce(accepted.quantity,0)) FILTER (WHERE o.status<>'CANCELLED'),0)::bigint AS pending
@@ -215,12 +258,25 @@ func summarizeOrders(ctx context.Context, tx pgx.Tx, args []any) (OrderSummary, 
 			SELECT sum(r.accepted_qty) AS quantity FROM purchase_receipt_items r
 			WHERE (r.tenant_id,r.purchase_order_id,r.order_item_id)=(i.tenant_id,i.purchase_order_id,i.id)
 		) accepted
+	), debt AS (
+		SELECT coalesce(sum(payable),0)::numeric(18,2)::text AS payable,coalesce(sum(paid),0)::numeric(18,2)::text AS paid,
+			coalesce(sum(greatest(payable-paid,0)),0)::numeric(18,2)::text AS balance,
+			count(*) FILTER (WHERE payable>paid) AS with_balance,count(*) FILTER (WHERE payable IS NULL) AS without_total
+		FROM matching
+	), checks AS (
+		SELECT coalesce(sum(p.amount),0)::numeric(18,2)::text AS amount,count(p.id) AS count
+		FROM matching o JOIN purchase_order_payments p ON (p.tenant_id,p.purchase_order_id)=(o.tenant_id,o.id)
+		WHERE p.voided_at IS NULL AND p.method='check' AND p.check_due_on > (clock_timestamp() AT TIME ZONE $7)::date
 	)
 	SELECT (SELECT count(*) FROM matching),ordered,received,pending,
 		(SELECT count(*) FROM matching WHERE status IN ('OPEN','PARTIALLY_RECEIVED')),
-		(SELECT count(*) FROM matching WHERE status='RECEIVED') FROM units`,
+		(SELECT count(*) FROM matching WHERE status='RECEIVED'),
+		debt.payable,debt.paid,debt.balance,debt.with_balance,debt.without_total,checks.amount,checks.count
+	FROM units,debt,checks`,
 		args...).
-		Scan(&summary.OrderCount, &summary.OrderedUnits, &summary.ReceivedUnits, &summary.PendingUnits, &summary.PendingOrders, &summary.ReceivedOrders)
+		Scan(&summary.OrderCount, &summary.OrderedUnits, &summary.ReceivedUnits, &summary.PendingUnits, &summary.PendingOrders, &summary.ReceivedOrders,
+			&summary.Payable, &summary.Paid, &summary.Balance, &summary.OrdersWithBalance, &summary.OrdersWithoutTotal,
+			&summary.ChecksToClear, &summary.ChecksToClearCount)
 	return summary, err
 }
 
@@ -399,7 +455,12 @@ func (s Service) withStore(ctx context.Context, actor auth.Identity, storeID str
 func scanOrder(row pgx.Row) (Order, error) {
 	var result Order
 	err := row.Scan(&result.ID, &result.Number, &result.StoreID, &result.SupplierID, &result.SupplierName, &result.Reference, &result.Currency,
-		&result.Status, &result.OrderedAt, &result.CreatedBy, &result.CancelledAt, &result.CancelReason, &result.Items)
+		&result.Status, &result.OrderedAt, &result.CreatedBy, &result.CancelledAt, &result.CancelReason, &result.Items,
+		&result.Payable, &result.Paid, &result.Payments)
+	if err != nil {
+		return result, err
+	}
+	result.Balance, result.PaymentStatus = paymentState(result.Payable, result.Paid)
 	result.OrderedAt = result.OrderedAt.UTC()
 	if result.CancelledAt != nil {
 		at := result.CancelledAt.UTC()

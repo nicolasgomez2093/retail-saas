@@ -3633,6 +3633,65 @@ func TestIdentityAcrossTenants(t *testing.T) {
 		t.Fatalf("registrar una orden no debe mover stock: %d %v", auditCount, err)
 	}
 
+	// Pagos al proveedor sobre la orden decimal: 5 × 125,60 = 628,00.
+	decimalOrderID := readID(expect(keyedCash(purchasesPath, decimalOrder, "purchase-concurrent-retry", manager), 201))
+	paymentsPath := purchasesPath + "/" + decimalOrderID + "/payments"
+	paidOn := time.Now().Add(-24 * time.Hour).UTC().Format(time.DateOnly)
+	paymentBody := func(method, amount, extra string) string {
+		return fmt.Sprintf(`{"storeId":"%s","method":"%s","amount":"%s","paidOn":"%s"%s}`, created.StoreID, method, amount, paidOn, extra)
+	}
+	checkPayment := paymentBody("check", "300", `,"checkDueOn":"2099-12-31","reference":"Cheque 0012"`)
+	request("POST", paymentsPath, checkPayment, origin, manager, 400)
+	expect(keyedCash(paymentsPath, checkPayment, "supplier-pay-cashier", cashier), 403)
+	expect(keyedCash(paymentsPath, checkPayment, "supplier-pay-operator", operator), 403)
+	expect(keyedCash(paymentsPath, checkPayment, "supplier-pay-other-tenant", second), 404)
+	expect(keyedCash(paymentsPath, paymentBody("cheque", "10", ""), "supplier-pay-method", manager), 400)
+	expect(keyedCash(paymentsPath, paymentBody("cash", "0", ""), "supplier-pay-zero", manager), 400)
+	expect(keyedCash(paymentsPath, paymentBody("cash", "10", `,"checkDueOn":"2099-12-31"`), "supplier-pay-due-cash", manager), 400)
+	expect(keyedCash(paymentsPath, strings.Replace(paymentBody("cash", "10", ""), paidOn, "2099-01-01", 1), "supplier-pay-future", manager), 400)
+	firstPayment := expect(keyedCash(paymentsPath, checkPayment, "supplier-pay-check", manager), 201)
+	if got := firstPayment.Body.String(); !strings.Contains(got, `"payable":"628.00","paid":"300.00","balance":"328.00","paymentStatus":"partial"`) ||
+		!strings.Contains(got, `"method":"check","amount":"300.00"`) || !strings.Contains(got, `"checkDueOn":"2099-12-31","reference":"Cheque 0012"`) {
+		t.Fatalf("el pago parcial debe dejar total, pagado y saldo: %s", got)
+	}
+	if replay := expect(keyedCash(paymentsPath, checkPayment, "supplier-pay-check", manager), 201); replay.Body.String() != firstPayment.Body.String() {
+		t.Fatal("el reintento del pago debe devolver la misma orden sin duplicar el pago")
+	}
+	checkRefundCode(keyedCash(paymentsPath, paymentBody("check", "301", ""), "supplier-pay-check", manager), 409, "idempotency_conflict")
+	checkRefundCode(keyedCash(paymentsPath, paymentBody("transfer", "328.01", ""), "supplier-pay-over", manager), 409, "purchase_payment_exceeds")
+	if got := request("GET", purchasesPath+purchaseQuery+"&payment=due", "", "", manager, 200).Body.String(); !strings.Contains(got, decimalOrderID) ||
+		!strings.Contains(got, `"checksToClear":"300.00","checksToClearCount":1`) || !strings.Contains(got, `"ordersWithoutTotal":1`) {
+		t.Fatalf("la orden con saldo debe figurar entre las que se deben, con el cheque a cobrar: %s", got)
+	}
+	request("GET", purchasesPath+purchaseQuery+"&payment=todos", "", "", manager, 400)
+	settled := expect(keyedCash(paymentsPath, paymentBody("transfer", "328", `,"reference":"Op. 99"`), "supplier-pay-rest", manager), 201)
+	if got := settled.Body.String(); !strings.Contains(got, `"paid":"628.00","balance":"0.00","paymentStatus":"paid"`) {
+		t.Fatalf("el segundo pago debe saldar la orden: %s", got)
+	}
+	if got := request("GET", purchasesPath+purchaseQuery+"&payment=paid", "", "", manager, 200).Body.String(); !strings.Contains(got, decimalOrderID) || strings.Contains(got, orderID) {
+		t.Fatalf("el filtro de pagados debe traer solo la orden saldada: %s", got)
+	}
+	var paidOrder purchases.Order
+	if err := json.Unmarshal(settled.Body.Bytes(), &paidOrder); err != nil || len(paidOrder.Payments) != 2 {
+		t.Fatalf("la orden debe listar sus dos pagos: %+v %v", paidOrder.Payments, err)
+	}
+	voidPath := paymentsPath + "/" + paidOrder.Payments[0].ID + "/void"
+	voidBody := `{"storeId":"` + created.StoreID + `","reason":"Cheque rechazado"}`
+	request("POST", voidPath, `{"storeId":"`+created.StoreID+`","reason":" "}`, origin, manager, 400)
+	request("POST", voidPath, voidBody, origin, cashier, 403)
+	request("POST", paymentsPath+"/"+orderID+"/void", voidBody, origin, manager, 404)
+	voided := request("POST", voidPath, voidBody, origin, manager, 200).Body.String()
+	if !strings.Contains(voided, `"paid":"328.00","balance":"300.00","paymentStatus":"partial"`) || !strings.Contains(voided, `"voidReason":"Cheque rechazado"`) {
+		t.Fatalf("anular un pago debe devolver el saldo y conservar el pago tachado: %s", voided)
+	}
+	if again := request("POST", voidPath, voidBody, origin, manager, 200).Body.String(); !strings.Contains(again, `"paid":"328.00"`) {
+		t.Fatalf("anular dos veces no debe cambiar la orden: %s", again)
+	}
+	if got := request("GET", purchasesPath+"/csv"+purchaseQuery, "", "", manager, 200).Body.String(); !strings.Contains(got, "numero_orden,total_orden,pagado_orden,saldo_orden") ||
+		!strings.Contains(got, ",628.00,328.00,300.00") {
+		t.Fatalf("el CSV de órdenes debe incluir total, pagado y saldo: %s", got)
+	}
+
 	request("PATCH", supplierPath, `{"status":"inactive","name":"Textiles Norte renombrada"}`, origin, cookie, 200)
 	checkRefundCode(keyedCash(purchasesPath, validPurchase, "purchase-inactive-supplier", manager), 409, "purchase_supplier_unavailable")
 	if replay := expect(keyedCash(purchasesPath, validPurchase, "purchase-confirm-order", manager), 201); replay.Body.String() != ordered.Body.String() {
@@ -3770,13 +3829,14 @@ func TestIdentityAcrossTenants(t *testing.T) {
 	}
 	if page := readPurchasePage("&status=pending&q=+TEXTILES+norte+mayorista+&limit=1"); len(page.Items) != 1 || !page.HasMore {
 		t.Fatalf("los filtros deben usar el proveedor histórico antes de paginar: %+v", page)
-	} else if page.Summary != (purchases.OrderSummary{OrderCount: 2, OrderedUnits: 107, PendingUnits: 107, PendingOrders: 2}) {
+	} else if page.Summary != (purchases.OrderSummary{OrderCount: 2, OrderedUnits: 107, PendingUnits: 107, PendingOrders: 2,
+		Payable: "628.00", Paid: "328.00", Balance: "300.00", OrdersWithBalance: 1, OrdersWithoutTotal: 1, ChecksToClear: "0.00"}) {
 		t.Fatalf("el resumen debe sumar ambas órdenes antes de paginar: %+v", page.Summary)
 	}
 	for _, query := range []string{"Textiles Norte renombrada", "%"} {
 		if page := readPurchasePage("&q=" + url.QueryEscape(query)); len(page.Items) != 0 {
 			t.Fatalf("la búsqueda literal no debe cambiar el proveedor guardado: %+v", page)
-		} else if page.Summary != (purchases.OrderSummary{}) {
+		} else if page.Summary != (purchases.OrderSummary{Payable: "0.00", Paid: "0.00", Balance: "0.00", ChecksToClear: "0.00"}) {
 			t.Fatalf("sin coincidencias los totales deben quedar en cero: %+v", page.Summary)
 		}
 	}
@@ -3831,6 +3891,42 @@ func TestIdentityAcrossTenants(t *testing.T) {
 		WHERE tenant_id=$1 AND store_id=$2 AND variant_id=$3`, created.TenantID, created.StoreID, variantID).Scan(&priorCostQuantity); err != nil {
 		t.Fatal(err)
 	}
+	// Costo cargado a mano para el stock actual: solo quien gestiona compras.
+	const costsPath = "/api/v1/inventory/costs"
+	costExistence := "/api/v1/inventory/existences/" + variantID + "?store_id=" + created.StoreID
+	costBody := func(cost string) string {
+		return `{"storeId":"` + created.StoreID + `","reason":"Factura del proveedor","items":[{"variantId":"` + variantID + `","unitCost":"` + cost + `"}]}`
+	}
+	request("PUT", costsPath, costBody("15.5"), origin, cashier, 403)
+	request("PUT", costsPath, costBody("15.5"), origin, operator, 403)
+	request("PUT", costsPath, costBody("15.5"), origin, second, 404)
+	request("PUT", costsPath, costBody("1.005"), origin, manager, 400)
+	request("PUT", costsPath, `{"storeId":"`+created.StoreID+`","items":[]}`, origin, manager, 400)
+	if priorCostQuantity == 0 {
+		t.Fatal("la variante debe tener stock para probar la carga de costo")
+	}
+	if got := request("PUT", costsPath, costBody("15.5"), origin, manager, 200).Body.String(); !strings.Contains(got, `"unitCost":"15.50","quantityOnHand":`) {
+		t.Fatalf("la carga de costo debe informar el costo y las unidades valuadas: %s", got)
+	}
+	if err := db.QueryRow(ctx, `SELECT count(*) FROM inventory_cost_revisions WHERE tenant_id=$1 AND variant_id=$2 AND unit_cost=15.50 AND reason='Factura del proveedor'`,
+		created.TenantID, variantID).Scan(&auditCount); err != nil || auditCount != 1 {
+		t.Fatalf("la carga de costo debe quedar registrada: %d %v", auditCount, err)
+	}
+	if got := request("GET", costExistence, "", "", manager, 200).Body.String(); !strings.Contains(got, `"unitCost":"15.50"`) || !strings.Contains(got, `"canSeeCosts":true`) {
+		t.Fatalf("el encargado debe ver el costo cargado: %s", got)
+	}
+	if got := request("GET", costExistence, "", "", cashier, 200).Body.String(); !strings.Contains(got, `"unitCost":null`) || !strings.Contains(got, `"canSeeCosts":false`) {
+		t.Fatalf("la cajera no debe ver costos: %s", got)
+	}
+	if got := request("GET", "/api/v1/inventory/existences/csv?store_id="+created.StoreID, "", "", manager, 200).Body.String(); !strings.Contains(got, "precio_venta,valor_venta,costo_unitario,valor_costo") ||
+		!strings.Contains(got, ",15.50,") {
+		t.Fatalf("el CSV de existencias debe incluir costos para el encargado: %.400s", got)
+	}
+	if got := request("GET", "/api/v1/inventory/existences/csv?store_id="+created.StoreID, "", "", cashier, 200).Body.String(); strings.Contains(got, "costo_unitario") ||
+		!strings.Contains(got, "fisico,reservado,vendible") {
+		t.Fatalf("el CSV de la cajera no debe incluir costos: %.300s", got)
+	}
+	request("GET", "/api/v1/inventory/existences/csv?store_id="+created.StoreID+"&saldo=todos", "", "", manager, 400)
 	execSQL(t, ctx, db, `UPDATE inventory_cost_balances SET status='known',average_unit_cost=12.34
 		WHERE tenant_id=$1 AND store_id=$2 AND variant_id=$3`, created.TenantID, created.StoreID, variantID)
 	partialReceiptInput := receiptInput(sellable, "Dos unidades rechazadas", withReceiptCost(receiptLine(orderLine, 60, 2), `"10.1"`))
@@ -3885,7 +3981,7 @@ func TestIdentityAcrossTenants(t *testing.T) {
 	}
 	if page := readPurchasePage("&status=pending"); len(page.Items) != 2 {
 		t.Fatalf("pendientes debe incluir órdenes abiertas y parcialmente recibidas: %+v", page)
-	} else if page.Summary != (purchases.OrderSummary{OrderCount: 2, OrderedUnits: 107, ReceivedUnits: 60, PendingUnits: 47, PendingOrders: 2}) {
+	} else if unitSummary(page.Summary) != (purchases.OrderSummary{OrderCount: 2, OrderedUnits: 107, ReceivedUnits: 60, PendingUnits: 47, PendingOrders: 2}) {
 		t.Fatalf("el resumen debe contar solo unidades aceptadas como recibidas: %+v", page.Summary)
 	}
 	if !strings.Contains(partialPurchaseReceipt.Body.String(), `"accepted":60,"rejected":2,"rejectionReason":"damaged","unitCost":"10.10"`) {
@@ -3937,7 +4033,7 @@ func TestIdentityAcrossTenants(t *testing.T) {
 	}
 	if page := readPurchasePage("&status=RECEIVED"); len(page.Items) != 1 || page.Items[0].ID != orderID {
 		t.Fatalf("el filtro de recibidas debe encontrar la orden completa: %+v", page)
-	} else if page.Summary != (purchases.OrderSummary{OrderCount: 1, OrderedUnits: 102, ReceivedUnits: 102, ReceivedOrders: 1}) {
+	} else if unitSummary(page.Summary) != (purchases.OrderSummary{OrderCount: 1, OrderedUnits: 102, ReceivedUnits: 102, ReceivedOrders: 1}) {
 		t.Fatalf("la orden completada debe quedar sin unidades pendientes: %+v", page.Summary)
 	}
 	var costKnown bool
@@ -4183,7 +4279,7 @@ func TestIdentityAcrossTenants(t *testing.T) {
 			t.Fatal("un pedido cancelado no debe recibir stock")
 		}
 		if page := readPurchasePage("&status=CANCELLED"); len(page.Items) != 1 || page.Items[0].ID != partial.ID ||
-			page.Summary != (purchases.OrderSummary{OrderCount: 1, OrderedUnits: 4, ReceivedUnits: 1}) {
+			unitSummary(page.Summary) != (purchases.OrderSummary{OrderCount: 1, OrderedUnits: 4, ReceivedUnits: 1}) {
 			t.Fatalf("un pedido cancelado no debe contar unidades pendientes: %+v", page)
 		}
 		if page := readPurchasePage("&status=pending"); slices.ContainsFunc(page.Items, func(order purchases.Order) bool { return order.ID == partial.ID }) {
@@ -6056,4 +6152,11 @@ func execSQL(t *testing.T, ctx context.Context, db *pgxpool.Pool, query string, 
 	if _, err := db.Exec(ctx, query, args...); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// unitSummary keeps the unit and order counts of a purchase summary, for
+// checks that are not about supplier payments.
+func unitSummary(summary purchases.OrderSummary) purchases.OrderSummary {
+	return purchases.OrderSummary{OrderCount: summary.OrderCount, OrderedUnits: summary.OrderedUnits, ReceivedUnits: summary.ReceivedUnits,
+		PendingUnits: summary.PendingUnits, PendingOrders: summary.PendingOrders, ReceivedOrders: summary.ReceivedOrders}
 }

@@ -3,6 +3,7 @@ package purchases
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
@@ -33,13 +34,21 @@ func (s Service) ExportOrdersCSV(ctx context.Context, actor auth.Identity, store
 		}
 		writer := csv.NewWriter(output)
 		if err := writer.Write([]string{"orden_id", "sucursal_id", "fecha_orden", "proveedor", "estado", "moneda",
-			"sku", "producto", "talle", "color", "unidades_pedidas", "unidades_aceptadas", "unidades_pendientes", "costo_unitario_orden"}); err != nil {
+			"sku", "producto", "talle", "color", "unidades_pedidas", "unidades_aceptadas", "unidades_pendientes", "costo_unitario_orden",
+			"numero_orden", "total_orden", "pagado_orden", "saldo_orden"}); err != nil {
 			return err
 		}
 		for rows.Next() {
 			order, err := scanOrder(rows)
 			if err != nil {
 				return err
+			}
+			payable, balance := "", ""
+			if order.Payable != nil {
+				payable = *order.Payable
+			}
+			if order.Balance != nil {
+				balance = *order.Balance
 			}
 			for _, line := range order.Items {
 				cost := ""
@@ -50,7 +59,8 @@ func (s Service) ExportOrdersCSV(ctx context.Context, actor auth.Identity, store
 					csvtext.Escape(order.SupplierName), order.Status, order.Currency, csvtext.Escape(line.SKU),
 					csvtext.Escape(line.Product), csvtext.Escape(line.Size), csvtext.Escape(line.Color),
 					strconv.FormatInt(int64(line.Quantity), 10), strconv.FormatInt(int64(line.Received), 10),
-					strconv.FormatInt(int64(line.Quantity-line.Received), 10), cost}); err != nil {
+					strconv.FormatInt(int64(line.Quantity-line.Received), 10), cost,
+					"OC-" + fmt.Sprintf("%04d", order.Number), payable, order.Paid, balance}); err != nil {
 					return err
 				}
 			}

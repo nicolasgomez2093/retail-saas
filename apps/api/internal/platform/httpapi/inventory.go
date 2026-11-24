@@ -124,6 +124,10 @@ func respondInventory(c *gin.Context, status int, result any, err error) {
 		fail(c, 409, "transfer_state_conflict", err.Error())
 	case errors.Is(err, inventory.ErrReceiptReason):
 		fail(c, 400, "transfer_receipt_reason_required", err.Error())
+	case errors.Is(err, inventory.ErrCostWithoutStock):
+		fail(c, 409, "inventory_cost_without_stock", err.Error())
+	case errors.Is(err, inventory.ErrExportTooLarge):
+		fail(c, 409, "inventory_export_too_large", err.Error())
 	case errors.Is(err, inventory.ErrKeyConflict), errors.Is(err, inventory.ErrTransferKey):
 		fail(c, 409, "idempotency_conflict", err.Error())
 	default:

@@ -270,3 +270,48 @@
 @media (max-width:760px){.pu-row .pu-row-actions{grid-column:1/-1}.pu-row-actions .pu-btn{flex:1}}
 .app-shell .pu .pu-table select.pu-condition{min-width:190px}
 @container (max-width:640px){.app-shell .pu .pu-table select.pu-condition{min-width:0}}
+
+/* Supplier payments: debt metric, payment column in the list and the «Pagos al proveedor» section of Ver pedido. */
+.pu-metrics.pu-metrics-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pu-metric-debt strong{color:#8a5b17}
+.app-shell .pu .pu-metric-debt button.pu-link{display:block;margin-top:8px;font-size:12px}
+.pu-row.pu-row-pay{grid-template-columns:1.3fr .7fr .7fr .9fr auto}
+.pu-row-payment .pu-pill{margin-bottom:2px}
+.pu-pay{margin-top:22px;border:1px solid var(--p-line);border-radius:12px;padding:16px 18px;background:#fbfcfa}
+.pu-pay-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.pu-pay-head h3{margin:0;font-size:17px}
+.pu-pay-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 0}
+.pu-pay-totals>div{background:#fff;border:1px solid var(--p-line);border-radius:10px;padding:10px 12px;min-width:0}
+.pu-pay-totals dt{font-size:12px;color:var(--p-muted)}
+.pu-pay-totals dd{margin:2px 0 0;font-size:18px;font-weight:800;letter-spacing:-.3px;overflow-wrap:anywhere}
+.pu-pay-totals>[data-tone=warning]{background:#fff8ec;border-color:#f0d9ad}
+.pu-pay-totals>[data-tone=warning] dd{color:#8a5b17}
+.pu-pay-totals>[data-tone=ok] dd{color:#1b6b3f}
+.pu-progress.pu-pay-progress{max-width:none;margin-top:10px}
+.pu-pay-empty{margin-top:12px}
+.pu-pay .pu-feedback{margin-top:12px}
+.pu-pay-list{list-style:none;margin:12px 0 0;padding:0}
+.pu-pay-list>li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 0;border-top:1px solid var(--p-line)}
+.pu-pay-main b{display:block;overflow-wrap:anywhere}
+.pu-pay-main small{display:block;color:var(--p-muted);font-size:12px;line-height:1.45}
+.pu-pay-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.pu-pay-amount{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pu-pay-list>li[data-voided] .pu-pay-main b,.pu-pay-list>li[data-voided] .pu-pay-amount{text-decoration:line-through;color:var(--p-muted)}
+.pu-pay-main .pu-pay-void{color:var(--danger,#b4232c);font-weight:700}
+.pu-pay-form,.pu-pay-voidform{margin-top:14px;background:#fff;border:1px solid #b8d3c3;border-radius:12px;padding:16px}
+.pu-pay-voidform{grid-column:1/-1;margin-top:6px;border-color:#efc3c3}
+.pu-pay-form h4{margin:0 0 12px;font-size:15px}
+.pu-pay-form .pu-formgrid small{font-weight:500}
+.pu-pay-amount-field{display:flex;align-items:center;border:1px solid var(--p-line);border-radius:9px;background:#fff;padding-left:12px}
+.pu-pay-amount-field>span{color:var(--p-muted);font-weight:700;font-size:13px}
+.app-shell .pu-dialog .pu-pay-amount-field input{border:0;box-shadow:none;font-size:17px;font-weight:800;min-width:0;flex:1}
+.pu-pay-actions{display:flex;justify-content:flex-end;gap:10px;margin:12px 0 8px;flex-wrap:wrap}
+.app-shell .pu-dialog button.pu-btn.danger{background:var(--danger,#b4232c);border-color:var(--danger,#b4232c);color:#fff}
+@media (max-width:1100px){.pu-metrics.pu-metrics-4{grid-template-columns:repeat(2,minmax(0,1fr))}.pu-row.pu-row-pay{grid-template-columns:1fr .8fr .8fr auto}.pu-row-pay .pu-row-payment{grid-column:1/-2}}
+@media (max-width:760px){
+  .pu-row.pu-row-pay{grid-template-columns:1fr 1fr}
+  .pu-row-pay .pu-row-payment{grid-column:1/-1}
+  .pu-pay-totals{grid-template-columns:1fr}
+  .pu-pay-totals>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .pu-pay-actions .pu-btn{flex:1 1 100%}
+}
