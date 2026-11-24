@@ -889,13 +889,13 @@ paths:
                       required: [productId, photoId, currency, minPrice, maxPrice, pricePartial, stockReadable, available]
                       properties:
                         productId: {type: string, format: uuid}
-                        photoId: {type: string, format: uuid, nullable: true}
-                        currency: {type: string, nullable: true}
-                        minPrice: {type: string, nullable: true}
-                        maxPrice: {type: string, nullable: true}
+                        photoId: {type: [string, 'null'], format: uuid}
+                        currency: {type: [string, 'null']}
+                        minPrice: {type: [string, 'null']}
+                        maxPrice: {type: [string, 'null']}
                         pricePartial: {type: boolean}
                         stockReadable: {type: boolean}
-                        available: {type: integer, format: int64, nullable: true}
+                        available: {type: [integer, 'null'], format: int64}
         '400': {$ref: '#/components/responses/Error'}
         '401': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
@@ -2560,7 +2560,7 @@ paths:
                   hasMore: {type: boolean}
                   canManage: {type: boolean}
                   timezone: {type: string}
-                  currency: {type: string, description: Moneda del comercio, para armar pedidos nuevos.}
+                  currency: {type: string, description: 'Moneda del comercio, para armar pedidos nuevos.'}
                   summary:
                     type: object
                     required: [orderCount, orderedUnits, receivedUnits, pendingUnits, pendingOrders, receivedOrders]
@@ -2568,7 +2568,7 @@ paths:
                       orderCount: {type: integer, format: int64, minimum: 0}
                       orderedUnits: {type: integer, format: int64, minimum: 0}
                       receivedUnits: {type: integer, format: int64, minimum: 0}
-                      pendingUnits: {type: integer, format: int64, minimum: 0, description: Lo pedido menos lo aceptado, sin contar pedidos cancelados.}
+                      pendingUnits: {type: integer, format: int64, minimum: 0, description: 'Lo pedido menos lo aceptado, sin contar pedidos cancelados.'}
                       pendingOrders: {type: integer, format: int64, minimum: 0, description: Pedidos abiertos o con recepción parcial.}
                       receivedOrders: {type: integer, format: int64, minimum: 0}
         '400': {$ref: '#/components/responses/Error'}
@@ -2593,7 +2593,7 @@ paths:
               properties:
                 storeId: {type: string, format: uuid}
                 supplierId: {type: string, format: uuid}
-                reference: {type: string, maxLength: 60, description: Nota de pedido, factura o remito del proveedor. Opcional.}
+                reference: {type: string, maxLength: 60, description: 'Nota de pedido, factura o remito del proveedor. Opcional.'}
                 items:
                   type: array
                   minItems: 1
@@ -3496,8 +3496,8 @@ paths:
                       properties:
                         date: {type: string, format: date}
                         currency: {type: string}
-                        categoryId: {type: string, format: uuid, nullable: true}
-                        categoryName: {type: string, nullable: true}
+                        categoryId: {type: [string, 'null'], format: uuid}
+                        categoryName: {type: [string, 'null']}
                         netSales: {type: string}
                   activity:
                     type: array
@@ -4022,7 +4022,7 @@ components:
       required: [id, number, storeId, supplierId, supplierName, reference, currency, status, orderedAt, createdBy, cancelledAt, cancelReason, items]
       properties:
         id: {type: string, format: uuid}
-        number: {type: integer, minimum: 1, description: Número correlativo del comercio, mostrado como OC-0001.}
+        number: {type: integer, minimum: 1, description: 'Número correlativo del comercio, mostrado como OC-0001.'}
         storeId: {type: string, format: uuid}
         supplierId: {type: string, format: uuid}
         supplierName: {type: string}
@@ -4395,7 +4395,7 @@ components:
         createdAt: {type: string, format: date-time}
         customer: {type: [string, 'null'], description: Cliente de la venta fiada o de la reserva cumplida; nulo para consumidor final.}
         units: {type: integer, minimum: 0}
-        products: {type: string, description: Nombres de los productos vendidos, separados por coma.}
+        products: {type: string, description: 'Nombres de los productos vendidos, separados por coma.'}
         returns: {type: integer, minimum: 0, description: Cantidad de cambios y devoluciones vinculados.}
         onCredit: {type: boolean}
         payments:
@@ -4468,7 +4468,7 @@ components:
         replacementTotal: {$ref: '#/components/schemas/CashAmount'}
         replacements:
           type: array
-          items: {type: object, description: Línea cotizada con el precio vigente, como en las ventas.}
+          items: {type: object, description: 'Línea cotizada con el precio vigente, como en las ventas.'}
         difference: {type: string, pattern: '^-?\d+\.\d{2}$', description: Reemplazo menos devuelto. Negativo si queda a favor del cliente.}
         charge: {$ref: '#/components/schemas/CashAmount'}
         debtCredit: {$ref: '#/components/schemas/CashAmount'}
@@ -4509,7 +4509,7 @@ components:
         currency: {type: string, pattern: '^[A-Z]{3}$'}
         saleCount: {type: integer, format: int64, minimum: 0}
         unitsSold: {type: integer, format: int64, minimum: 0}
-        grossSales: {type: string, description: Importe de las líneas vendidas, neto de descuentos.}
+        grossSales: {type: string, description: 'Importe de las líneas vendidas, neto de descuentos.'}
         averageTicket: {type: [string, 'null'], description: grossSales / saleCount; nulo sin ventas en el período.}
         returnCount: {type: integer, format: int64, minimum: 0}
         returnedUnits: {type: integer, format: int64, minimum: 0}
@@ -5153,7 +5153,7 @@ components:
             type: object
             required: [values, barcode]
             properties:
-              values: {type: array, items: {type: string, maxLength: 60}, description: Un valor por atributo, en el mismo orden.}
+              values: {type: array, items: {type: string, maxLength: 60}, description: 'Un valor por atributo, en el mismo orden.'}
               sku: {type: string, maxLength: 80, description: Vacío para numeración automática.}
               barcode:
                 type: object
