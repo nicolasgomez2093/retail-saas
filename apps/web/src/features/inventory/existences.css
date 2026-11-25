@@ -46,20 +46,54 @@
 .existences .existences-value{background:#fff;border:1px solid var(--p-line);border-radius:14px;padding:16px 18px;display:grid;gap:3px;align-content:start;min-width:0}
 .existences .existences-value:first-child{border-color:#b8d3c3;background:#f6faf6}
 .existences .existences-value[data-incomplete]{border-color:#f0d9ad;background:#fffaf0}
-.existences .existences-value>span{font-size:12px;color:var(--p-muted);font-weight:700}
+.existences .existences-value>span{font-size:12px;color:var(--p-muted);font-weight:700;display:flex;align-items:center;gap:7px}
+.existences .existences-value>span::before{content:'';width:8px;height:8px;border-radius:3px;background:var(--dot,#9fb5aa)}
+.existences .existences-value:nth-child(1){--dot:#22664f}.existences .existences-value:nth-child(2){--dot:#3f7fb0}.existences .existences-value:nth-child(3){--dot:#8a6bb8}
+.existences .existences-value[data-incomplete]{--dot:#d99a2b}
 .existences .existences-value>strong{font-size:26px;letter-spacing:-.8px;line-height:1.15;overflow-wrap:anywhere}
 .existences .existences-value>small{font-size:12px;color:var(--p-muted)}
 .existences .existences-value>.existences-value-hint{color:#8a5b17;font-weight:700}
 .existences .existences-table thead th.existences-cost,.existences .existences-table td.existences-cost{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.existences .existences-table td.existences-cost small{font-size:11.5px;color:var(--p-muted);display:block;margin-top:2px}
 .existences .existences-muted{color:var(--p-muted)}
-.app-shell .existences button.existences-cost-action{display:block;margin:3px 0 0 auto;min-height:0;padding:0;border:0;background:none;color:var(--p-green);
-  font:inherit;font-size:12px;font-weight:800;cursor:pointer;width:auto}
-.app-shell .existences button.existences-cost-action:hover{text-decoration:underline}
-.app-shell .existences .existences-table .existences-group th>button.existences-group-cost{float:right;display:inline-flex;min-height:30px;padding:0 12px;margin:-3px 0;
-  border:1px solid #b8d3c3;border-radius:8px;background:#fff;color:var(--p-green);font:inherit;font-size:12px;font-weight:800;cursor:pointer;width:auto}
+/* Cost cell: amount and stock total, with a quiet edit button that stands out on row hover. */
+.existences .existences-cost-cell{display:inline-flex;align-items:center;gap:10px;justify-content:flex-end}
+.existences .existences-cost-value{display:grid;justify-items:end;gap:1px}
+.existences .existences-cost-value b{font-size:13.5px;font-weight:800;color:var(--p-ink)}
+.existences .existences-cost-value small{font-size:11.5px;color:var(--p-muted);margin:0}
+.existences .existences-cost-missing{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#8a5b17}
+.existences .existences-cost-missing::before{content:'';width:6px;height:6px;border-radius:50%;background:#d99a2b}
+.app-shell .existences button.existences-cost-action{display:inline-grid;place-items:center;width:30px;height:30px;min-height:0;padding:0;margin:0;flex:none;
+  border:1px solid transparent;border-radius:8px;background:transparent;color:var(--p-muted);cursor:pointer;opacity:.55;
+  transition:opacity .15s,background .15s,border-color .15s,color .15s}
+.app-shell .existences .existences-variant:is(:hover,:focus-within) button.existences-cost-action{opacity:1;border-color:var(--p-line);background:#fff}
+.app-shell .existences button.existences-cost-action:hover{color:var(--p-green);border-color:#b1ceba;background:#f3f8f3;opacity:1}
+@media (hover:none){.app-shell .existences button.existences-cost-action{opacity:1;border-color:var(--p-line);background:#fff}}
+.app-shell .existences button.existences-cost-load{display:inline-grid;align-items:center;justify-items:end;min-height:30px;padding:0 11px;margin:0 -11px 0 0;width:auto;
+  border:1px dashed transparent;border-radius:8px;background:transparent;color:#8a5b17;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+.app-shell .existences button.existences-cost-load>span{grid-area:1/1;transition:opacity .15s}
+.existences .existences-cost-load-idle{display:inline-flex;align-items:center;gap:6px}
+.existences .existences-cost-load-idle::before{content:'';width:6px;height:6px;border-radius:50%;background:#d99a2b}
+.existences .existences-cost-load-go{opacity:0}
+.app-shell .existences .existences-variant:is(:hover,:focus-within) button.existences-cost-load{border-color:#e0b866;background:#fffaf0}
+.app-shell .existences .existences-variant:is(:hover,:focus-within) .existences-cost-load-idle{opacity:0}
+.app-shell .existences .existences-variant:is(:hover,:focus-within) .existences-cost-load-go{opacity:1}
+.app-shell .existences button.existences-cost-load:hover{background:#fff1d6;border-color:#c98f1f;border-style:solid;color:#6f4709;box-shadow:0 3px 10px #8a5b1714}
+@media (hover:none){
+  .app-shell .existences button.existences-cost-load{border-color:#e0b866;background:#fffaf0}
+  .existences .existences-cost-load-idle{opacity:0}.existences .existences-cost-load-go{opacity:1}
+}
+/* Product row action: same height and alignment as the product name, amber when some variant has no cost. */
+.app-shell .existences .existences-table .existences-group th>button.existences-group-cost{float:right;display:inline-flex;align-items:center;gap:7px;
+  min-height:28px;padding:0 11px;margin:-4px 0;border:1px solid #c9dccf;border-radius:8px;background:#fff;color:var(--p-green);
+  font:inherit;font-size:12px;font-weight:800;line-height:1;cursor:pointer;width:auto;white-space:nowrap;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s}
 .existences .existences-table .existences-group th>button.existences-group-cost::after{content:none}
-.existences .existences-table .existences-group th>button.existences-group-cost:hover{background:#f3f8f3}
+.app-shell .existences .existences-table .existences-group th>button.existences-group-cost:hover{background:#eaf3ec;border-color:#8fb9a2;color:#174d3c;box-shadow:0 3px 10px #173d3214;transform:translateY(-1px)}
+.app-shell .existences .existences-table .existences-group th>button.existences-group-cost[data-missing]{border-color:#efd29b;background:#fffaf0;color:#8a5b17}
+.app-shell .existences .existences-table .existences-group th>button.existences-group-cost[data-missing]:hover{background:#fff1d6;border-color:#c98f1f;color:#6f4709}
+.existences .existences-group-cost-count{display:inline-flex;align-items:center;min-height:18px;padding:0 6px;border-radius:5px;background:#f6e2b8;color:#7a4f0e;font-size:11px}
+.existences .existences-csv{display:inline-flex;align-items:center;gap:7px}
+.existences .existences-csv svg{flex:none}
 .existences .existences-done{background:#edf5ed;color:#1b6b3f;font-weight:700}
 .existences .existences-detail-money{display:flex;flex-wrap:wrap;gap:8px 22px;margin:2px 0 14px;font-size:14px;color:var(--p-muted)}
 .existences .existences-detail-money b{color:var(--p-ink)}
@@ -72,6 +106,9 @@
 .existences-cost-table td:nth-child(2){white-space:nowrap;font-variant-numeric:tabular-nums}
 .existences-cost-table td:last-child{width:46%}
 .existences-cost-table [data-invalid]{border-color:var(--danger,#b4232c)}
+.existences-cost-table tbody tr{transition:background .15s}
+.existences-cost-table tbody tr:hover{background:#fafcf9}
+.existences-cost-table tbody tr:focus-within{background:#f3f8f3}
 .existences-cost-reason{margin-top:14px}
 .existences-cost-total{margin-right:auto;font-weight:800;color:var(--p-ink,#20342d)}
 @container existences (max-width: 650px){

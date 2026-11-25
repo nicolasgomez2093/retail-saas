@@ -73,6 +73,7 @@ export function SupplierPayments({ order, timezone, canManage, onChanged }: {
     {order.payments.length === 0 ? !form && <p className="pu-hint pu-pay-empty">Todavía no registraste pagos de este pedido.</p> :
       <ul className="pu-pay-list" aria-label="Pagos registrados">
         {[...active, ...voided].map((payment) => <li key={payment.id} data-voided={payment.voidedAt ? true : undefined}>
+          <span className="pu-pay-icon" data-method={payment.method} aria-hidden="true"><MethodIcon method={payment.method} /></span>
           <div className="pu-pay-main">
             <b>{paymentMethodLabels[payment.method]}{payment.reference ? ' · ' + payment.reference : ''}</b>
             <small>Pagado el {dayText(payment.paidOn)}
@@ -84,7 +85,7 @@ export function SupplierPayments({ order, timezone, canManage, onChanged }: {
             <b className="pu-pay-amount">{amountText(order.currency, payment.amount)}</b>
             {payment.checkDueOn && !payment.voidedAt && payment.checkDueOn > todayIn(timezone) && <span className="pu-pill warning">Cheque a cobrar</span>}
             {canManage && !payment.voidedAt && voiding?.id !== payment.id &&
-              <button type="button" className="pu-link danger" onClick={() => { setForm(false); setVoiding(payment); }}
+              <button type="button" className="pu-pay-void-btn" onClick={() => { setForm(false); setVoiding(payment); }}
                 aria-label={'Anular pago de ' + amountText(order.currency, payment.amount) + ' del ' + dayText(payment.paidOn)}>Anular</button>}
           </div>
           {voiding?.id === payment.id && <VoidForm order={order} payment={payment} onCancel={() => setVoiding(null)}
@@ -92,6 +93,21 @@ export function SupplierPayments({ order, timezone, canManage, onChanged }: {
         </li>)}
       </ul>}
   </section>;
+}
+
+const iconPaths: Record<SupplierPaymentMethod, string> = {
+  cash: 'M2 4.5h12v7H2zM8 6.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6M4 6.5v3M12 6.5v3',
+  transfer: 'M2.5 5.5h10m0 0-2.5-2.5m2.5 2.5L10 8M13.5 10.5h-10m0 0L6 8m-2.5 2.5L6 13',
+  check: 'M1.5 4h13v8h-13zM3.5 7h5M3.5 9.5h3M10.5 9.5h2',
+  card: 'M1.5 3.5h13v9h-13zM1.5 6.5h13M3.5 10h3',
+  other: 'M4 8h.01M8 8h.01M12 8h.01',
+};
+
+function MethodIcon({ method }: { method: SupplierPaymentMethod }) {
+  return <svg viewBox="0 0 16 16" width="17" height="17" focusable="false">
+    <path d={iconPaths[method] ?? iconPaths.other} fill="none" stroke="currentColor" strokeWidth={method === 'other' ? 2.4 : 1.4}
+      strokeLinecap="round" strokeLinejoin="round" />
+  </svg>;
 }
 
 function PaymentForm({ order, timezone, onCancel, onSaved }: {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { routeHref } from '../../app/routes';
 import { api, ApiError, type ExistenceAccess, type ExistenceDetail, type ExistencePage, type ExistenceRow, type LocationPage, type StockLocation, type Store, type Term } from '../../shared/api/client';
 import { BarcodeScanner } from '../catalog/BarcodeScanner';
-import { CostCell, CostDialog, moneyOf, ValueSummary } from './InventoryCosts';
+import { CostCell, CostDialog, DownloadIcon, moneyOf, ValueSummary } from './InventoryCosts';
 import { existenceDefaults, existenceSearch, existencesHref, isExistencesHash, lastExistencesPage, readExistencesHash, type ExistenceQuery } from './existencesQuery';
 
 type Context = { scope: number };
@@ -187,9 +187,9 @@ function StockTable({ rows, filters, access, currency, onSetCost }: {
               {product.productStatus === 'inactive' ? <small>Producto inactivo</small>
                 : <small className="pos-sr-only">Producto activo</small>}
               <span className="existences-group-count" aria-hidden="true">{entries.length === 1 ? '1 variante' : entries.length + ' variantes'}</span>
-              {canSet && stocked.length > 0 && <button type="button" className="existences-group-cost"
+              {canSet && stocked.length > 0 && <button type="button" className="existences-group-cost" data-missing={missing > 0 || undefined}
                 onClick={event => onSetCost({ title: 'Costo de ' + product.product, rows: stocked, opener: event.currentTarget })}>
-                {missing ? (missing === 1 ? 'Cargar costo (1 sin costo)' : 'Cargar costo (' + missing + ' sin costo)') : 'Editar costos'}
+                {missing ? <>Cargar costo <span className="existences-group-cost-count">{missing === 1 ? '1 sin costo' : missing + ' sin costo'}</span></> : 'Editar costos'}
                 <span className="pos-sr-only"> de {product.product}</span></button>}
             </th>
           </tr>
@@ -410,7 +410,7 @@ export function Existences({ branch, hash, stockRevision, locationRevision, cont
         sku={detailData.item.sku} variantId={detailData.item.variantId ?? undefined} /> : data && <OperationLinks access={data.access} hasLocations={Boolean(locations.result?.data?.items.length)}
         location={values.ubicacion} />}
       {!viewDetail && data && <button type="button" className="button-secondary existences-csv" aria-disabled={exporting}
-        onClick={() => void downloadCSV()}>{exporting ? 'Preparando CSV…' : '⤓ Descargar CSV'}</button>}
+        onClick={() => void downloadCSV()}>{exporting ? 'Preparando CSV…' : <><DownloadIcon /> Descargar CSV</>}</button>}
       <button type="button" className="button-secondary existences-refresh" aria-label="Actualizar existencias" aria-disabled={reading}
         onClick={() => { if (!reading) (viewDetail ? detail.retry : list.retry)(); }}>Actualizar</button>
     </div>}

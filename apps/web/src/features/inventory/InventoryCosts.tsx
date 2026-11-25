@@ -44,22 +44,30 @@ export function ValueSummary({ summary, access }: { summary: ExistencePage['summ
   </div>;
 }
 
+const PencilIcon = () => <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+  <path d="M11.2 2.3a1.6 1.6 0 0 1 2.3 2.3L5.6 12.5 2.5 13.5l1-3.1z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+</svg>;
+
+export const DownloadIcon = () => <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+  <path d="M8 2.5v7.5m0 0L5 7m3 3 3-3M3 12.5h10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+</svg>;
+
 export function CostCell({ row, currency, canSet, onSet }: {
   row: ExistenceRow; currency: string; canSet: boolean; onSet: (opener: HTMLButtonElement) => void;
 }) {
   const stock = (row.onHand ?? 0) > 0;
-  if (row.unitCost) return <>
-    {moneyOf(currency, row.unitCost)}
-    {stock && row.costValue && <small>Total {moneyOf(currency, row.costValue)}</small>}
+  if (row.unitCost) return <span className="existences-cost-cell">
     {canSet && stock && <button type="button" className="existences-cost-action" onClick={(event) => onSet(event.currentTarget)}
-      aria-label={'Cambiar costo de ' + row.sku}>Cambiar</button>}
-  </>;
+      aria-label={'Cambiar costo de ' + row.sku} title="Cambiar costo"><PencilIcon /></button>}
+    <span className="existences-cost-value">
+      <b>{moneyOf(currency, row.unitCost)}</b>
+      {stock && row.costValue && <small>Total {moneyOf(currency, row.costValue)}</small>}
+    </span>
+  </span>;
   if (!stock) return <span className="existences-muted">—</span>;
-  return <>
-    <span className="existences-muted">Sin costo</span>
-    {canSet && <button type="button" className="existences-cost-action" onClick={(event) => onSet(event.currentTarget)}
-      aria-label={'Cargar costo de ' + row.sku}>Cargar</button>}
-  </>;
+  if (!canSet) return <span className="existences-cost-missing">Sin costo</span>;
+  return <button type="button" className="existences-cost-load" onClick={(event) => onSet(event.currentTarget)}
+    aria-label={'Cargar costo de ' + row.sku}><span className="existences-cost-load-idle">Sin costo</span><span className="existences-cost-load-go">＋ Cargar costo</span></button>;
 }
 
 /**

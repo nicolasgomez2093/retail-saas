@@ -274,12 +274,18 @@
 /* Supplier payments: debt metric, payment column in the list and the «Pagos al proveedor» section of Ver pedido. */
 .pu-metrics.pu-metrics-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .pu-metric-debt strong{color:#8a5b17}
-.app-shell .pu .pu-metric-debt button.pu-link{display:block;margin-top:8px;font-size:12px}
+.app-shell .pu .pu-metric-debt button.pu-metric-link{display:inline-flex;align-items:center;gap:6px;margin:10px 0 0 -8px;min-height:30px;padding:0 8px;width:auto;
+  border:0;border-radius:7px;background:transparent;color:var(--p-green,#22664f);font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;transition:background .15s,color .15s}
+.app-shell .pu .pu-metric-debt button.pu-metric-link span{display:inline-block;font-size:15px;line-height:1;transition:transform .15s}
+.app-shell .pu .pu-metric-debt button.pu-metric-link:hover{background:#eaf3ec;color:#174d3c}
+.app-shell .pu .pu-metric-debt button.pu-metric-link:hover span{transform:translateX(3px)}
+.pu-metric-debt{background:linear-gradient(180deg,#fffaf0,#fff 70%);border-color:#f0d9ad}
 .pu-row.pu-row-pay{grid-template-columns:1.3fr .7fr .7fr .9fr auto}
 .pu-row-payment .pu-pill{margin-bottom:2px}
 .pu-pay{margin-top:22px;border:1px solid var(--p-line);border-radius:12px;padding:16px 18px;background:#fbfcfa}
 .pu-pay-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .pu-pay-head h3{margin:0;font-size:17px}
+.pu-pay-head .pu-btn.primary{min-height:38px;padding:8px 14px}
 .pu-pay-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 0}
 .pu-pay-totals>div{background:#fff;border:1px solid var(--p-line);border-radius:10px;padding:10px 12px;min-width:0}
 .pu-pay-totals dt{font-size:12px;color:var(--p-muted)}
@@ -291,27 +297,52 @@
 .pu-pay-empty{margin-top:12px}
 .pu-pay .pu-feedback{margin-top:12px}
 .pu-pay-list{list-style:none;margin:12px 0 0;padding:0}
-.pu-pay-list>li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 0;border-top:1px solid var(--p-line)}
+.pu-pay-list{display:grid;gap:8px}
+.pu-pay-list>li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:12px 14px;
+  background:#fff;border:1px solid var(--p-line);border-radius:11px;transition:border-color .15s,box-shadow .15s}
+.pu-pay-list>li:hover{border-color:#c4d8cb;box-shadow:0 4px 14px #173d320d}
+.pu-pay-list>li[data-voided]{background:#f7f8f7;opacity:.85}
+.pu-pay-list>li[data-voided]:hover{box-shadow:none;border-color:var(--p-line)}
+.pu-pay-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#eaf3ec;color:#22664f}
+.pu-pay-icon[data-method=check]{background:#fff3dc;color:#8a5b17}
+.pu-pay-icon[data-method=transfer]{background:#e8f0f8;color:#2f6693}
+.pu-pay-icon[data-method=card]{background:#f1ecf8;color:#6b4fa0}
+.pu-pay-icon[data-method=other]{background:#eef1ef;color:var(--p-muted)}
+.pu-pay-list>li[data-voided] .pu-pay-icon{background:#eef1ef;color:#9aa8a1}
 .pu-pay-main b{display:block;overflow-wrap:anywhere}
 .pu-pay-main small{display:block;color:var(--p-muted);font-size:12px;line-height:1.45}
-.pu-pay-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.pu-pay-side{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;text-align:right}
+.pu-pay-amount{font-size:15px;letter-spacing:-.2px}
+.pu-pay-side .pu-pill{padding:4px 8px;font-size:11.5px}
+.app-shell .pu-dialog button.pu-pay-void-btn{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;width:auto;margin:0;
+  border:1px solid transparent;border-radius:8px;background:transparent;color:var(--danger,#b4232c);font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
+  transition:background .15s,border-color .15s}
+.app-shell .pu-dialog button.pu-pay-void-btn:hover{background:#fdeeee;border-color:#f2c4c4}
 .pu-pay-amount{font-variant-numeric:tabular-nums;white-space:nowrap}
 .pu-pay-list>li[data-voided] .pu-pay-main b,.pu-pay-list>li[data-voided] .pu-pay-amount{text-decoration:line-through;color:var(--p-muted)}
 .pu-pay-main .pu-pay-void{color:var(--danger,#b4232c);font-weight:700}
-.pu-pay-form,.pu-pay-voidform{margin-top:14px;background:#fff;border:1px solid #b8d3c3;border-radius:12px;padding:16px}
-.pu-pay-voidform{grid-column:1/-1;margin-top:6px;border-color:#efc3c3}
+.pu-pay-form,.pu-pay-voidform{margin-top:14px;background:#fff;border:1px solid #b8d3c3;border-radius:12px;padding:18px;box-shadow:0 6px 20px #173d3212}
+.pu-pay-voidform{grid-column:1/-1;margin-top:6px;border-color:#efc3c3;box-shadow:none;background:#fffafa}
 .pu-pay-form h4{margin:0 0 12px;font-size:15px}
 .pu-pay-form .pu-formgrid small{font-weight:500}
-.pu-pay-amount-field{display:flex;align-items:center;border:1px solid var(--p-line);border-radius:9px;background:#fff;padding-left:12px}
+.pu-pay-amount-field{display:flex;align-items:center;border:1px solid var(--p-line);border-radius:9px;background:#fff;padding-left:12px;transition:border-color .15s,box-shadow .15s}
+.pu-pay-amount-field:hover{border-color:#b7cbbf}
+.pu-pay-amount-field:focus-within{border-color:#5f9a80;box-shadow:0 0 0 3px #89b7a440}
+.pu-pay-amount-field[data-invalid]{border-color:var(--danger,#b4232c)}
+.app-shell .pu-dialog .pu-pay-amount-field input:is(:focus,:focus-visible){outline:none;box-shadow:none;border:0}
 .pu-pay-amount-field>span{color:var(--p-muted);font-weight:700;font-size:13px}
 .app-shell .pu-dialog .pu-pay-amount-field input{border:0;box-shadow:none;font-size:17px;font-weight:800;min-width:0;flex:1}
 .pu-pay-actions{display:flex;justify-content:flex-end;gap:10px;margin:12px 0 8px;flex-wrap:wrap}
 .app-shell .pu-dialog button.pu-btn.danger{background:var(--danger,#b4232c);border-color:var(--danger,#b4232c);color:#fff}
+.app-shell .pu-dialog button.pu-btn.danger:hover:not(:disabled){background:#931b23;border-color:#931b23}
 @media (max-width:1100px){.pu-metrics.pu-metrics-4{grid-template-columns:repeat(2,minmax(0,1fr))}.pu-row.pu-row-pay{grid-template-columns:1fr .8fr .8fr auto}.pu-row-pay .pu-row-payment{grid-column:1/-2}}
 @media (max-width:760px){
   .pu-row.pu-row-pay{grid-template-columns:1fr 1fr}
   .pu-row-pay .pu-row-payment{grid-column:1/-1}
   .pu-pay-totals{grid-template-columns:1fr}
   .pu-pay-totals>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .pu-pay-list>li{grid-template-columns:32px minmax(0,1fr)}
+  .pu-pay-icon{width:32px;height:32px}
+  .pu-pay-side{grid-column:2;justify-content:flex-start}
   .pu-pay-actions .pu-btn{flex:1 1 100%}
 }

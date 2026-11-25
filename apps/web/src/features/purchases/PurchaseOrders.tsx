@@ -138,7 +138,7 @@ function PurchaseOrdersForStore({ store, pendingOnly, supplierId, supplierName, 
           Number(overall.checksToClear) > 0 ? (overall.checksToClearCount === 1 ? '1 cheque' : overall.checksToClearCount + ' cheques') + ' a cobrar por ' + moneyText(page?.currency ?? 'ARS', overall.checksToClear) : '',
           overall.ordersWithoutTotal ? overall.ordersWithoutTotal + ' sin total' : '',
         ].filter(Boolean).join(' · ') : ''}</span>
-        {overall && overall.ordersWithBalance > 0 && filters.payment !== 'due' && <button type="button" className="pu-link" onClick={() => { setFilters({ ...filters, payment: 'due' }); setOffset(0); }}>Ver pedidos con saldo</button>}
+        {overall && overall.ordersWithBalance > 0 && filters.payment !== 'due' && <button type="button" className="pu-metric-link" onClick={() => { setFilters({ ...filters, payment: 'due' }); setOffset(0); }}>Ver pedidos con saldo <span aria-hidden="true">→</span></button>}
       </div>
     </div>
     <div className="pu-card">
