@@ -21,7 +21,7 @@ const paths = {
   configuracion: 'administracion',
   'configuracion/sucursales': 'administracion/sucursales',
   'configuracion/usuarios': 'administracion/usuarios',
-  'configuracion/tienda': 'administracion/tienda-online',
+  tienda: 'tienda-online',
 } as const;
 
 export type Destination = keyof typeof paths;
@@ -30,6 +30,9 @@ for (const destination of Object.keys(paths) as Destination[]) {
   lookup.set(destination, destination);
   if (destination !== 'compras/pendientes') lookup.set(paths[destination], destination);
 }
+// Earlier address, when the storefront lived under Configuración.
+lookup.set('administracion/tienda-online', 'tienda');
+lookup.set('configuracion/tienda', 'tienda');
 
 export function routeHref(destination: Destination, query?: URLSearchParams) {
   const params = new URLSearchParams(query);

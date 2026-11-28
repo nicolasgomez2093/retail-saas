@@ -68,3 +68,17 @@ test('una variante sin talle ni color no agrega detalle', () => {
   assert.equal(cart.variantLabel({ size: '', color: '' }), '');
   assert.equal(cart.variantLabel({ size: '40', color: '' }), 'Talle 40');
 });
+
+test('ordena talles conocidos y respeta el orden del catálogo si hay talles desconocidos', () => {
+  assert.deepEqual(cart.sortSizes(['M', 'L', 'S', 'XL']), ['S', 'M', 'L', 'XL']);
+  assert.deepEqual(cart.sortSizes(['42', '38', '40', '36']), ['36', '38', '40', '42']);
+  assert.deepEqual(cart.sortSizes(['Único']), ['Único']);
+  assert.deepEqual(cart.sortSizes(['Bebé', 'S', 'M']), ['Bebé', 'S', 'M']);
+});
+
+test('muestra de color: gana la del catálogo, si no hay usa nombres comunes', () => {
+  assert.equal(cart.swatchColor('Negro', '#000000'), '#000000');
+  assert.equal(cart.swatchColor('Azul marino', null), '#1f2f52');
+  assert.equal(cart.swatchColor('Marrón oscuro', null), '#6b4528');
+  assert.equal(cart.swatchColor('Estampado', null), null);
+});

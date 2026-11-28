@@ -1,4 +1,4 @@
-/* Configuración › Tienda online, with the cards, pills and buttons of Compras (.pu). */
+/* Tienda online (main menu), with the cards, pills and buttons of Compras (.pu). */
 .sf-admin{max-width:1100px}
 .sf-head{margin-bottom:20px}
 .sf-status{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid var(--p-line);
@@ -79,3 +79,5 @@
 .app-shell .sf-admin form.sf-card{max-width:none}
 .app-shell .sf-admin .sf-switch small{font-weight:500}
 .app-shell .sf-admin .sf-switch b{font-weight:750}
+.sf-try{font-weight:700;color:var(--p-green);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.sf-try:hover{text-decoration-thickness:2px}

@@ -5,13 +5,11 @@ import { useState } from 'react';
 import { StoreAdmin } from '../stores/StoreAdmin';
 import { UserAdmin } from '../users/UserAdmin';
 import { PricingAdmin } from '../pricing/PricingAdmin';
-import { StorefrontAdmin } from '../storefront/StorefrontAdmin';
 
 export const configurationViews = [
   ['configuracion/sucursales', 'Sucursales', 'Administrá los datos y el estado de tus locales.'],
   ['configuracion/usuarios', 'Usuarios', 'Gestioná el equipo y sus accesos por sucursal.'],
   ['configuracion/precios', 'Precios', 'Creá listas, editá precios y asigná listas a sucursales.'],
-  ['configuracion/tienda', 'Tienda online', 'Publicá tu catálogo y recibí pedidos por WhatsApp.'],
 ] as const;
 
 type ConfigurationView = 'configuracion' | typeof configurationViews[number][0];
@@ -23,12 +21,10 @@ export function Configuration({ view, branch, storeRevision, onStoresChanged, on
   const [storesAccess, setStoresAccess] = useState<ConfigurationAccess>('loading');
   const [usersAccess, setUsersAccess] = useState<ConfigurationAccess>('loading');
   const [pricingAccess, setPricingAccess] = useState<ConfigurationAccess>('loading');
-  const [storefrontAccess, setStorefrontAccess] = useState<ConfigurationAccess>('loading');
   const access = {
     'configuracion/sucursales': storesAccess,
     'configuracion/usuarios': usersAccess,
     'configuracion/precios': pricingAccess,
-    'configuracion/tienda': storefrontAccess,
   };
   const visible = configurationViews.filter(([id]) => access[id] === 'allowed' || access[id] === 'error');
   const loading = Object.values(access).includes('loading');
@@ -55,9 +51,6 @@ export function Configuration({ view, branch, storeRevision, onStoresChanged, on
     </div>
     <div className="feature-panel" hidden={view !== 'configuracion/precios' || pricingAccess === 'denied'}>
       <PricingAdmin storeRevision={storeRevision} onSaved={onPricesChanged} onAccessChange={setPricingAccess} />
-    </div>
-    <div className="feature-panel" hidden={view !== 'configuracion/tienda' || storefrontAccess === 'denied'}>
-      <StorefrontAdmin storeRevision={storeRevision} onAccessChange={setStorefrontAccess} />
     </div>
   </div>;
 }

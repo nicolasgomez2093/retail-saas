@@ -94,8 +94,9 @@ export function StorefrontAdmin({ storeRevision, onAccessChange }: { storeRevisi
     setPending((current) => [...current, product.id]); setNotice(''); setError('');
     try {
       await api.setStorefrontHidden(product.id, !product.hidden);
+      const fresh = await api.storefront();
+      setData(fresh);
       setNotice(product.hidden ? '«' + product.name + '» vuelve a la tienda.' : '«' + product.name + '» quedó oculto de la tienda.');
-      setData(await api.storefront());
     } catch (cause) {
       setError(message(cause));
     } finally {
@@ -118,10 +119,9 @@ export function StorefrontAdmin({ storeRevision, onAccessChange }: { storeRevisi
     setNotice('');
   };
 
-  return <section className="pu sf-admin" aria-labelledby={uid + 'title'}>
+  return <section className="pu sf-admin" aria-label="Tienda online">
     <header className="pu-head sf-head">
       <div>
-        <h2 id={uid + 'title'}>Tienda online</h2>
         <p>Publicá tu catálogo en una página para tus clientes. Arman el carrito y te mandan el pedido por WhatsApp.</p>
       </div>
     </header>
@@ -152,7 +152,9 @@ export function StorefrontAdmin({ storeRevision, onAccessChange }: { storeRevisi
         <label>WhatsApp del local
           <input value={form.whatsapp} inputMode="tel" autoComplete="tel" placeholder="Ej. 54 9 11 5555-6666" disabled={busy}
             onChange={(event) => set('whatsapp', event.target.value)} />
-          <small className="pu-hint">Con código de país y de área, sin el 0 ni el 15. Ahí llegan los pedidos.</small>
+          <small className="pu-hint">Con código de país y de área, sin el 0 ni el 15. Podés usar cualquier número: ahí llegan los pedidos.
+            {/^[1-9]\d{7,14}$/.test(form.whatsapp.replace(/\D/g, '')) && <> <a className="sf-try" href={'https://wa.me/' + form.whatsapp.replace(/\D/g, '')}
+              target="_blank" rel="noopener">Probar este número ↗</a></>}</small>
         </label>
         <label>Sucursal que publica
           <select value={form.storeId ?? ''} disabled={busy} onChange={(event) => set('storeId', event.target.value || null)}>

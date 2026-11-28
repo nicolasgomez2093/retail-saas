@@ -26,6 +26,7 @@ const groups: Group[] = [
   ] },
   { id: 'caja', label: 'Caja', entries: [{ label: 'Caja', route: 'caja', access: 'cash' }] },
   { id: 'reportes', label: 'Reportes', entries: [{ label: 'Reportes', route: 'reportes', access: 'cash' }] },
+  { id: 'tienda', label: 'Tienda online', entries: [{ label: 'Tienda online', route: 'tienda', access: 'storefront' }] },
   // The hub behind «Más» on phones, plus the administration pages under Configuración.
   { id: 'gestion', label: 'Administración', entries: [
     { label: 'Más opciones', route: 'gestion' },
@@ -33,7 +34,6 @@ const groups: Group[] = [
     { label: 'Configuración', route: 'configuracion' },
     { label: 'Sucursales', route: 'configuracion/sucursales', access: 'stores' },
     { label: 'Usuarios y permisos', route: 'configuracion/usuarios', access: 'users' },
-    { label: 'Tienda online', route: 'configuracion/tienda', access: 'storefront' },
   ] },
 ];
 const mobileEntries: Entry[] = [
@@ -118,13 +118,14 @@ function probe(resource: AccessResource, branchId?: string, retry = false) {
 }
 const menuIcons: Partial<Record<Destination, string>> = {
   inicio: '⌂', productos: '▦', vender: '＋', stock: '▤', clientes: '♧',
-  gestion: '⋯', caja: '◴', compras: '◈', reportes: '▥', configuracion: '⚙',
+  gestion: '⋯', caja: '◴', compras: '◈', reportes: '▥', configuracion: '⚙', tienda: '◎',
 };
 const desktopEntries: Entry[] = [
   { label: 'Inicio', route: 'inicio' }, { label: 'Productos', route: 'productos' },
   { label: 'Vender', route: 'vender', access: 'cash' }, { label: 'Inventario', route: 'stock', access: 'stock' },
   { label: 'Clientes', route: 'clientes', access: 'cash' }, { label: 'Caja', route: 'caja', access: 'cash' },
   { label: 'Compras', route: 'compras', access: 'purchases' }, { label: 'Reportes', route: 'reportes', access: 'cash' },
+  { label: 'Tienda online', route: 'tienda', access: 'storefront' },
 ];
 
 export function SalesShortcut({ branchId, primary = false, label = 'Ir a vender', icon }: { branchId?: string; primary?: boolean; label?: string; icon?: string }) {
@@ -153,6 +154,7 @@ export function Navigation({ destination, branchId, user, busy, onLogout, onCurr
       probe('purchases', branchId);
       probe('stores', branchId);
       probe('users', branchId);
+      probe('storefront', branchId);
       if (destination.entry.access) probe(destination.entry.access, branchId);
       if (destination.route === 'configuracion' || destination.route === 'gestion') {
         probe('stores', branchId);
@@ -220,6 +222,7 @@ export function ManagementHub({ branchId }: { branchId?: string }) {
     { route: 'productos', label: 'Catálogo', description: 'Artículos, variantes y precios' },
     { route: 'clientes', access: 'cash', label: 'Clientes', description: 'Contactos y saldos' },
     { route: 'stock', access: 'stock', label: 'Inventario', description: 'Existencias y ajustes' },
+    { route: 'tienda', access: 'storefront', label: 'Tienda online', description: 'Catálogo público y pedidos por WhatsApp' },
   ];
   return <>
     <p className="reference-management-intro">Herramientas para operar y administrar tu comercio.</p>
@@ -243,7 +246,6 @@ export function ManagementHub({ branchId }: { branchId?: string }) {
 function ContextualAdministration({ branchId }: { branchId?: string }) {
   const entries: Entry[] = [
     { label: 'Listas de precios', route: 'configuracion/precios', access: 'prices' },
-    { label: 'Tienda online', route: 'configuracion/tienda', access: 'storefront' },
     { label: 'Configuración', route: 'configuracion' },
   ];
   const allowed = entries.filter(entry => entryAccess(entry, branchId) === 'allowed');

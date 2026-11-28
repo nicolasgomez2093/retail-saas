@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { ShopError, shopAPI, type Shop as ShopData, type ShopProduct, type ShopProductDetail, type ShopVariant } from './api';
-import { addLine, money, orderMessage, parseCart, priceText, setQuantity, total, units, variantLabel, whatsappURL, maxQuantity, type CartLine } from './cart';
+import { addLine, money, orderMessage, parseCart, priceText, setQuantity, sortSizes, swatchColor, total, units, variantLabel, whatsappURL, maxQuantity, type CartLine } from './cart';
 
 type Route = { slug: string; view: 'catalog' } | { slug: string; view: 'product'; id: string } | { slug: string; view: 'cart' };
 
@@ -103,10 +103,17 @@ function Store({ route, go, back: goBack }: { route: Route; go: (route: Route, r
         <span className="shop-logo" aria-hidden="true">{shop.name.trim().charAt(0).toUpperCase()}</span>
         <span><strong>{shop.name}</strong><small>{shop.branch}</small></span>
       </a>
-      <a className="shop-cart-button" href={'/tienda/' + shop.slug + '/carrito'} aria-label={'Carrito, ' + (count === 1 ? '1 producto' : count + ' productos')}
-        onClick={(event) => { event.preventDefault(); open({ slug: shop.slug, view: 'cart' }); }}>
-        <CartIcon />{count > 0 && <span className="shop-badge">{count}</span>}
-      </a>
+      <nav className="shop-header-actions" aria-label="Accesos">
+        <a className="shop-ask" href={whatsappURL(shop.whatsapp, '¡Hola ' + shop.name + '! Tengo una consulta.')} target="_blank" rel="noopener">
+          <WhatsAppIcon /><span>Consultas</span>
+        </a>
+        <a className="shop-cart-button" href={'/tienda/' + shop.slug + '/carrito'} aria-label={'Carrito, ' + (count === 1 ? '1 producto' : count + ' productos')}
+          onClick={(event) => { event.preventDefault(); open({ slug: shop.slug, view: 'cart' }); }}>
+          <CartIcon />
+          <span className="shop-cart-text">{count > 0 ? money(total(lines), shop.currency) : 'Carrito'}</span>
+          {count > 0 && <span className="shop-badge">{count}</span>}
+        </a>
+      </nav>
     </header>
     <main className="shop-main">
       {route.view === 'catalog' && <Catalog shop={shop} restore={catalogScroll} onOpen={(product) => open({ slug: shop.slug, view: 'product', id: product.id })} />}
@@ -120,10 +127,19 @@ function Store({ route, go, back: goBack }: { route: Route; go: (route: Route, r
         <span>Ver carrito · {count === 1 ? '1 producto' : count + ' productos'}</span><b>{money(total(lines), shop.currency)}</b>
       </button>
     </div>}
-    {toast && <div className="shop-toast" role="status">✓ {toast}</div>}
+    {toast && <div className="shop-toast" role="status">
+      <span className="shop-toast-check" aria-hidden="true">✓</span><span>{toast}</span>
+      <button type="button" onClick={() => open({ slug: shop.slug, view: 'cart' })}>Ver carrito</button>
+    </div>}
     <footer className="shop-footer">
-      <p><b>{shop.name}</b>{shop.address ? ' · ' + shop.address : ''}</p>
-      <p>Armá tu pedido y envialo por WhatsApp. El local confirma precio, stock y entrega.</p>
+      <div className="shop-footer-inner">
+        <p className="shop-footer-name"><b>{shop.name}</b>{shop.branch ? ' · ' + shop.branch : ''}</p>
+        {shop.address && <p>{shop.address}</p>}
+        <p>Armá tu pedido y envialo por WhatsApp. El local confirma precio, stock y entrega.</p>
+        <a className="shop-footer-wa" href={whatsappURL(shop.whatsapp, '¡Hola ' + shop.name + '! Tengo una consulta.')} target="_blank" rel="noopener">
+          <WhatsAppIcon />Escribinos por WhatsApp
+        </a>
+      </div>
     </footer>
   </div>;
 }
@@ -140,7 +156,17 @@ function Catalog({ shop, restore, onOpen }: { shop: ShopData; restore: { current
       (!needle || normalize(product.name + ' ' + (product.brand ?? '')).includes(needle)));
   }, [shop.products, query, category]);
   return <>
-    {shop.welcome && <p className="shop-welcome">{shop.welcome}</p>}
+    <section className="shop-hero" aria-labelledby="shop-hero-title">
+      <div className="shop-hero-text">
+        <h1 id="shop-hero-title">{shop.name}</h1>
+        {shop.welcome ? <p>{shop.welcome}</p> : <p>Elegí tus productos y mandanos el pedido por WhatsApp.</p>}
+      </div>
+      <ol className="shop-steps" aria-label="Cómo comprar">
+        <li><span aria-hidden="true">1</span><b>Elegí</b> talle y color</li>
+        <li><span aria-hidden="true">2</span><b>Sumalo</b> al carrito</li>
+        <li><span aria-hidden="true">3</span><b>Envialo</b> por WhatsApp</li>
+      </ol>
+    </section>
     <div className="shop-filters">
       <label className="shop-search">
         <SearchIcon />
@@ -155,7 +181,8 @@ function Catalog({ shop, restore, onOpen }: { shop: ShopData; restore: { current
     </div>
     {shop.products.length === 0 ? <Empty title="Pronto vas a ver los productos acá" text="El local todavía está armando su tienda." />
       : products.length === 0 ? <Empty title="No encontramos productos" text="Probá con otra palabra o elegí otra categoría." />
-        : <ul className="shop-grid" aria-label="Productos">{products.map((product) => <li key={product.id}>
+        : <><p className="shop-count" aria-live="polite">{products.length === 1 ? '1 producto' : products.length + ' productos'}</p>
+        <ul className="shop-grid" aria-label="Productos">{products.map((product) => <li key={product.id}>
           <a className="shop-card" href={'/tienda/' + shop.slug + '/producto/' + product.id} data-soldout={!product.available || undefined}
             onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey) return; event.preventDefault(); onOpen(product); }}>
             <span className="shop-card-image">
@@ -167,7 +194,7 @@ function Catalog({ shop, restore, onOpen }: { shop: ShopData; restore: { current
               <span className="shop-card-price">{product.priceFrom !== product.priceTo && <small>Desde </small>}{priceText(product.priceFrom, shop.currency)}</span>
             </span>
           </a>
-        </li>)}</ul>}
+        </li>)}</ul></>}
   </>;
 }
 
@@ -203,7 +230,7 @@ function ProductView({ shop, id, onBack, onAdd }: { shop: ShopData; id: string; 
   if (!product) return <div className="shop-page"><BackLink onBack={onBack} /><div className="shop-loading inline" role="status"><span className="shop-spinner" aria-hidden="true" />Cargando…</div></div>;
 
   const colors = unique(product.variants.map((variant) => variant.color));
-  const sizes = unique(product.variants.map((variant) => variant.size));
+  const sizes = sortSizes(unique(product.variants.map((variant) => variant.size)));
   const hasColors = colors.some(Boolean);
   const hasSizes = sizes.some(Boolean);
   const pick = (wantedColor: string, wantedSize: string) => product.variants.find((variant) => variant.color === wantedColor && variant.size === wantedSize);
@@ -213,7 +240,7 @@ function ProductView({ shop, id, onBack, onAdd }: { shop: ShopData; id: string; 
     return !variant ? 'none' : variant.available ? 'ok' : 'soldout';
   };
   const colorAvailable = (value: string) => product.variants.some((variant) => variant.color === value && variant.available);
-  const swatch = (value: string) => product.variants.find((variant) => variant.color === value)?.colorHex ?? null;
+  const swatch = (value: string) => swatchColor(value, product.variants.find((variant) => variant.color === value)?.colorHex ?? null);
   const price = selected?.price ?? product.priceFrom;
 
   function add() {
@@ -269,6 +296,14 @@ function ProductView({ shop, id, onBack, onAdd }: { shop: ShopData; id: string; 
             {product.available ? 'Agregar al carrito' : 'Agotado'}
           </button>
         </div>
+        <a className="shop-ask-product" target="_blank" rel="noopener"
+          href={whatsappURL(shop.whatsapp, '¡Hola ' + shop.name + '! Quería consultar por ' + product.name + (selected && variantLabel(selected) ? ' (' + variantLabel(selected) + ')' : '') + '.')}>
+          <WhatsAppIcon />¿Dudas con el talle? Consultanos
+        </a>
+        <ul className="shop-perks">
+          <li><b>Pedido por WhatsApp</b>Armás el carrito y nos lo mandás con un toque.</li>
+          <li><b>Sin pagar online</b>El local te confirma stock, precio y cómo lo recibís.</li>
+        </ul>
         {product.description && <div className="shop-description"><h2>Descripción</h2><p>{product.description}</p></div>}
       </div>
     </div>
@@ -339,6 +374,8 @@ function CartView({ shop, lines, setLines, onContinue, onOpen }: {
 
   return <div className="shop-page shop-cart">
     <h1 className="shop-title">Tu carrito <small>{units(lines) === 1 ? '1 producto' : units(lines) + ' productos'}</small></h1>
+    <div className="shop-cart-layout">
+    <div className="shop-cart-items">
     <ul className="shop-lines">{lines.map((line) => {
       const off = unavailable.includes(line);
       return <li key={line.variantId} data-off={off || undefined}>
@@ -357,8 +394,10 @@ function CartView({ shop, lines, setLines, onContinue, onOpen }: {
         </div>
       </li>;
     })}</ul>
+    <button type="button" className="shop-continue" onClick={onContinue}>← Seguir comprando</button>
+    </div>
 
-    <div className="shop-summary">
+    <aside className="shop-summary" aria-label="Resumen del pedido">
       <div className="shop-total"><span>Total</span><b>{money(total(ready), shop.currency)}</b></div>
       <label className="shop-field"><span>Tu nombre <small>(opcional)</small></span>
         <input value={customer} maxLength={60} autoComplete="name" placeholder="Para que el local sepa quién escribe" onChange={(event) => setCustomer(event.target.value)} />
@@ -366,17 +405,20 @@ function CartView({ shop, lines, setLines, onContinue, onOpen }: {
       <label className="shop-field"><span>Comentario <small>(opcional)</small></span>
         <textarea value={note} maxLength={300} rows={2} placeholder="Ej. Retiro en el local / Envío a Palermo" onChange={(event) => setNote(event.target.value)} />
       </label>
+      {ready.length > 0 && <a className="shop-btn whatsapp shop-send-inline" href={href} target="_blank" rel="noopener" onClick={() => setSent(true)}>
+        <WhatsAppIcon /><span>Enviar pedido por WhatsApp</span>
+      </a>}
       <p className="shop-hint">Te abrimos WhatsApp con el pedido escrito. El local te confirma precio, stock y forma de entrega.</p>
+      {sent && <div className="shop-sent" role="status">
+        <b>¿Pudiste enviar el pedido?</b>
+        <span>Si ya lo mandaste por WhatsApp, podés vaciar el carrito.</span>
+        <div><button type="button" className="shop-btn" onClick={() => setSent(false)}>Todavía no</button>
+          <button type="button" className="shop-btn primary" onClick={() => { setLines(() => []); setSent(false); onContinue(); }}>Sí, vaciar carrito</button></div>
+      </div>}
+    </aside>
     </div>
 
-    {sent && <div className="shop-sent" role="status">
-      <b>¿Pudiste enviar el pedido?</b>
-      <span>Si ya lo mandaste por WhatsApp, podés vaciar el carrito.</span>
-      <div><button type="button" className="shop-btn" onClick={() => setSent(false)}>Todavía no</button>
-        <button type="button" className="shop-btn primary" onClick={() => { setLines(() => []); setSent(false); onContinue(); }}>Sí, vaciar carrito</button></div>
-    </div>}
-
-    <div className="shop-dock">
+    <div className="shop-dock shop-cart-dock">
       {ready.length > 0 ? <a className="shop-btn whatsapp shop-dock-button" href={href} target="_blank" rel="noopener" onClick={() => setSent(true)}>
         <WhatsAppIcon /><span>Enviar por WhatsApp</span><b>{money(total(ready), shop.currency)}</b>
       </a> : <button type="button" className="shop-btn shop-dock-button" onClick={onContinue}>Seguir comprando</button>}

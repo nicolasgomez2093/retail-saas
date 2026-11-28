@@ -21,7 +21,9 @@ test('los enlaces anteriores resuelven la misma vista que su equivalente canóni
     configuracion: 'administracion',
     'configuracion/usuarios': 'administracion/usuarios',
     'configuracion/sucursales': 'administracion/sucursales',
-    'configuracion/tienda': 'administracion/tienda-online',
+    tienda: 'tienda-online',
+    'configuracion/tienda': 'tienda-online',
+    'administracion/tienda-online': 'tienda-online',
   };
   for (const view of ['movimientos', 'ajustes', 'conteos', 'transferencias', 'valuacion']) {
     aliases['stock/' + view] = 'inventario/' + view;

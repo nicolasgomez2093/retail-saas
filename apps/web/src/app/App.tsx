@@ -19,7 +19,11 @@ import { PointOfSale } from '../features/pos/PointOfSale';
 import { PurchaseOrders } from '../features/purchases/PurchaseOrders';
 import { Suppliers } from '../features/suppliers/Suppliers';
 import { SalesMarginReport } from '../features/reports/SalesMarginReport';
+import { StorefrontAdmin } from '../features/storefront/StorefrontAdmin';
 import { api, ApiError, type Credentials, type Identity, type LoginChoice, type Store } from '../shared/api/client';
+
+// Access to the storefront is resolved by the navigation probe; the page itself shows its own load errors.
+const ignoreAccess = () => {};
 
 function readReportDay(query: string) {
   const day = new URLSearchParams(query).get('dia') ?? '';
@@ -394,6 +398,9 @@ export function App() {
                 {visitedViews.has('proveedores') && <div className="feature-panel" hidden={destination !== 'proveedores'}>
                   <Suppliers key={'suppliers-' + identity.userId} storeRevision={storeRevision} selectedId={destination === 'proveedores' ? supplierId : ''}
                     onHistory={(id, name) => setSupplierContext({ userId: identity.userId, id, name })} />
+                </div>}
+                {visitedViews.has('tienda') && <div className="feature-panel" hidden={destination !== 'tienda'}>
+                  <StorefrontAdmin key={identity.tenantId + ':' + identity.userId} storeRevision={storeRevision} onAccessChange={ignoreAccess} />
                 </div>}
                 {visitedConfiguration && <Configuration key={identity.tenantId + ':' + identity.userId} view={configurationView} branch={branch} storeRevision={storeRevision}
                   onPricesChanged={() => setPriceRevision((revision) => revision + 1)} onStoresChanged={() => {

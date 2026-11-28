@@ -7,7 +7,7 @@ Los comercios quieren mostrar sus productos en internet y recibir pedidos sin ar
 ## Decisión
 
 - **Una tienda por comercio**, en `/tienda/<comercio>`, con el identificador corto (`slug`) del comercio.
-  - La configura el dueño (`storefront:manage`) en Configuración › Tienda online.
+  - La configura el dueño (`storefront:manage`) en «Tienda online», una opción propia del menú principal (`#/tienda-online`).
   - Se guarda en `storefronts` (migración 048).
 - **Una sola sucursal publica.** Sus precios (lista asignada) y su stock vendible (ubicaciones vendibles activas, menos reservas) son los que ve el cliente.
 - **Qué se publica:**
@@ -39,11 +39,16 @@ Los comercios quieren mostrar sus productos en internet y recibir pedidos sin ar
   - La tienda es otra página (`tienda.html`) con su propio código. El cliente no descarga el sistema interno: unos 70 KB comprimidos contra unos 230 KB.
   - Caddy la sirve para `/tienda/*`.
   - Está diseñada primero para el celular: grilla de dos columnas, acciones al alcance del pulgar, botón fijo del carrito y del pedido.
+  - En tablet la ficha pasa a dos columnas (foto y opciones) y en la computadora el carrito muestra el resumen y el botón de WhatsApp fijos al costado.
+  - Portada con el nombre del comercio, el mensaje de bienvenida y los tres pasos para comprar.
+  - Botón «Consultas» y enlace «¿Dudas con el talle?» que abren WhatsApp con un mensaje inicial, sin pasar por el carrito.
+  - Los talles conocidos se ordenan solos (XS…XXL y numéricos); si hay alguno que no reconoce, se respeta el orden del catálogo.
+  - Si un color no tiene muestra cargada, se usa una para los nombres comunes (Negro, Celeste, Bordó…); si no la reconoce, va sin muestra.
 
 ## Consecuencias
 
 - Entre que el cliente arma el carrito y el local lo lee, el stock puede cambiar. Por eso el mensaje y la tienda aclaran que el local confirma precio, stock y entrega.
-- Un producto sin foto no aparece en la tienda. Configuración › Tienda online lo marca «Sin foto», con un enlace al catálogo para cargarla.
+- Un producto sin foto no aparece en la tienda. La pantalla «Tienda online» lo marca «Sin foto», con un enlace al catálogo para cargarla.
 - La caché de fotos es por proceso: un reinicio la vacía y se vuelve a generar a pedido.
 - Quedan para más adelante:
   - Registrar el pedido web en el sistema (para convertirlo en reserva).
