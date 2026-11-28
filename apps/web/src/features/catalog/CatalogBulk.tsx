@@ -64,7 +64,7 @@ export function BulkLabels({ ids, storeId, returnTo, onClose }: { ids: string[];
   }, [key]);
   if (items && items.length) {
     return <LabelDialog data={items[0]} additional={items.slice(1)} storeId={storeId} returnTo={returnTo} onClose={onClose}
-      countsHint="Sale una etiqueta por variante." />;
+      countsHint={storeId ? "Sale una etiqueta por cada unidad en stock." : "Sale una etiqueta por variante."} />;
   }
   return <Modal title="Etiquetas de los productos" onClose={onClose} returnTo={returnTo}>
     {error ? <p role="alert">{error}</p> : !items ? <p role="status">Buscando las variantes…</p>

@@ -31,7 +31,7 @@ function barcodeHeight(format: LabelFormat) {
   return format.height >= 40 ? 12 : format.height >= 30 ? 9 : 7;
 }
 const sidePaddingMm = 3;
-const maxCopies = 250;
+const maxCopies = 500;
 
 function barcodeImage(code: string, paper = paperWidthMm): { image: BarcodeImage } | { error: string } {
   try {
@@ -124,15 +124,18 @@ export function LabelDialog({ data, returnTo, onClose, additional = [], storeId,
   const rows = useMemo(() => variants.map(item => {
     const id = item.variant.id;
     const code = codes[id] ?? item.variant.barcodes[0] ?? '';
-    const text = counts[id] ?? initialCounts?.[id] ?? '1';
+    // By default, one label per unit in stock of the branch; without a branch (or before reading it), one per variant.
+    const stock = reads[id]?.stock;
+    const text = counts[id] ?? initialCounts?.[id] ?? (typeof stock === 'number' ? String(Math.max(0, stock)) : stock === null ? '0' : '1');
     const count = Number(text);
     const validCount = /^\d+$/.test(text) && count <= maxCopies;
     return { item, id, code, text, count, validCount, symbol: code ? barcodeImage(code, paper) : { error: 'Sin código imprimible.' } };
-  }), [variants, codes, counts, paper]);
+  }), [variants, codes, counts, paper, reads, initialCounts]);
   const selected = rows.filter(row => !excluded.includes(row.id));
   const printing = selected.filter(row => row.validCount && row.count > 0);
   const total = printing.reduce((sum, row) => sum + row.count, 0);
-  const valid = selected.every(row => row.validCount) && total > 0 && total <= maxCopies && printing.every(row => 'image' in row.symbol);
+  const stockPending = Boolean(storeId && !initialCounts) && variants.some(item => !(item.variant.id in reads));
+  const valid = !stockPending && selected.every(row => row.validCount) && total > 0 && total <= maxCopies && printing.every(row => 'image' in row.symbol);
   const example = printing.find(row => 'image' in row.symbol);
   const hasStock = selected.some(row => typeof reads[row.id]?.stock === 'number');
 
@@ -158,7 +161,9 @@ export function LabelDialog({ data, returnTo, onClose, additional = [], storeId,
       {products === 1 && <p className="label-identity"><strong>{data.product.name}</strong></p>}
       <p className="label-hint">{showPrice ? 'Las etiquetas llevan precio.' : 'Las etiquetas salen sin precio.'} Lo podés cambiar en Configuración › Etiquetas.</p>
       {!preview && <>
-        {countsHint && <p className="label-hint">{countsHint} Podés cambiar cada cantidad. Imprimir no modifica el stock.</p>}
+        {(countsHint || (storeId && !initialCounts)) && <p className="label-hint">
+          {countsHint ?? 'Sale una etiqueta por cada unidad en stock.'} Podés cambiar cada cantidad. Imprimir no modifica el stock.</p>}
+        {stockPending && <p role="status" className="label-hint">Leyendo el stock de la sucursal…</p>}
         <label>Tamaño de etiqueta<select value={format.id} onChange={event => {
           const next = labelFormats.find(item => item.id === event.target.value) ?? labelFormats[0];
           setFormat(next);
