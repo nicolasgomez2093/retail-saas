@@ -142,3 +142,17 @@ export function swatchColor(name: string, hex: string | null): string | null {
   const key = plain(name);
   return colorNames[key] ?? colorNames[key.split(/\s+/)[0]] ?? null;
 }
+
+function channel(value: number) {
+  const c = value / 255;
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+// Text color over the commerce color: white or near-black, whichever contrasts more (WCAG relative luminance).
+export function accentInk(hex: string): string {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!match) return '#fff';
+  const [r, g, b] = match.slice(1).map((part) => channel(parseInt(part, 16)));
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return (1.05) / (luminance + 0.05) >= (luminance + 0.05) / (0.0211 + 0.05) ? '#fff' : '#1c2321';
+}

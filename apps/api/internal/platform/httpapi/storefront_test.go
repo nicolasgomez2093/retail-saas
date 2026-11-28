@@ -358,6 +358,66 @@ func TestStorefront(t *testing.T) {
 		request("GET", public+"/products/"+jacket["product"], "", nil, 200)
 	})
 
+	t.Run("Logo y color", func(t *testing.T) {
+		saved := request("PUT", settings, `{"enabled":true,"storeId":"`+one.StoreID+`","whatsapp":"5491155556666","title":"","welcome":"","showSoldOut":true,"accent":"#C0392B"}`, owner, 200)
+		if !strings.Contains(saved.Body.String(), `"accent":"#c0392b"`) {
+			t.Fatalf("color normalizado: %s", saved.Body)
+		}
+		for _, wrong := range []string{"rojo", "#c0392", "#gggggg", "c0392b"} {
+			request("PUT", settings, `{"enabled":true,"storeId":"`+one.StoreID+`","whatsapp":"5491155556666","title":"","welcome":"","showSoldOut":true,"accent":"`+wrong+`"}`, owner, 400)
+		}
+		// A wide logo with a transparent left half: stored as PNG of at most 512 px, keeping transparency.
+		var logo bytes.Buffer
+		mark := image.NewNRGBA(image.Rect(0, 0, 1600, 800))
+		for y := range 800 {
+			for x := 800; x < 1600; x++ {
+				mark.SetNRGBA(x, y, color.NRGBA{R: 20, G: 90, B: 160, A: 255})
+			}
+		}
+		if err := png.Encode(&logo, mark); err != nil {
+			t.Fatal(err)
+		}
+		request("PUT", settings+"/logo", logo.String(), cashier, 403, map[string]string{"Content-Type": "image/png"})
+		request("PUT", settings+"/logo", "hola", owner, 415, map[string]string{"Content-Type": "text/plain"})
+		request("PUT", settings+"/logo", "no es una imagen", owner, 400, map[string]string{"Content-Type": "image/png"})
+		res := request("PUT", settings+"/logo", logo.String(), owner, 200, map[string]string{"Content-Type": "image/png"})
+		var view storefront.Admin
+		if err := json.Unmarshal(res.Body.Bytes(), &view); err != nil || view.Logo < 1 || view.Accent != "#c0392b" {
+			t.Fatalf("logo guardado: %s", res.Body)
+		}
+		var current storefront.PublicStore
+		if err := json.Unmarshal(request("GET", public, "", nil, 200).Body.Bytes(), &current); err != nil || current.Logo != view.Logo || current.Accent != "#c0392b" {
+			t.Fatalf("marca pública: %+v %v", current, err)
+		}
+		served := request("GET", public+"/logo?v=1", "", nil, 200)
+		if served.Header().Get("Content-Type") != "image/png" || served.Header().Get("Set-Cookie") != "" {
+			t.Fatalf("cabeceras del logo: %v", served.Header())
+		}
+		decoded, err := png.Decode(bytes.NewReader(served.Body.Bytes()))
+		if err != nil || decoded.Bounds().Dx() != 512 || decoded.Bounds().Dy() != 256 {
+			t.Fatalf("logo reducido: %v %v", decoded.Bounds(), err)
+		}
+		if _, _, _, alpha := decoded.At(10, 10).RGBA(); alpha != 0 {
+			t.Fatalf("el logo perdió la transparencia: %d", alpha)
+		}
+		if r, g, b, _ := decoded.At(500, 128).RGBA(); r>>8 != 20 || g>>8 != 90 || b>>8 != 160 {
+			t.Fatalf("color del logo alterado: %d %d %d", r>>8, g>>8, b>>8)
+		}
+		request("GET", settings+"/logo", "", owner, 200)
+		request("GET", "/api/v1/public/storefronts/tienda-dos/logo", "", nil, 404)
+		replaced := request("PUT", settings+"/logo", logo.String(), owner, 200, map[string]string{"Content-Type": "image/png"})
+		var again storefront.Admin
+		if err := json.Unmarshal(replaced.Body.Bytes(), &again); err != nil || again.Logo <= view.Logo {
+			t.Fatalf("la versión del logo no cambió: %s", replaced.Body)
+		}
+		removed := request("DELETE", settings+"/logo", "", owner, 200)
+		if !strings.Contains(removed.Body.String(), `"logo":0`) {
+			t.Fatalf("logo quitado: %s", removed.Body)
+		}
+		request("GET", public+"/logo", "", nil, 404)
+		request("GET", settings+"/logo", "", owner, 404)
+	})
+
 	t.Run("Sucursal o comercio inactivos", func(t *testing.T) {
 		execSQL(t, ctx, db, "UPDATE stores SET status='inactive' WHERE id=$1", one.StoreID)
 		request("GET", public, "", nil, 404)

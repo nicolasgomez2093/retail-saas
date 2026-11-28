@@ -36,6 +36,8 @@ type PublicStore struct {
 	Currency   string           `json:"currency"`
 	Branch     string           `json:"branch"`
 	Address    string           `json:"address"`
+	Accent     string           `json:"accent"`
+	Logo       int              `json:"logo"`
 	Categories []PublicCategory `json:"categories"`
 	Products   []PublicProduct  `json:"products"`
 }
@@ -88,11 +90,12 @@ func (s Service) Public(ctx context.Context, slug string) (PublicStore, error) {
 		return result, ErrNotFound
 	}
 	err := pgx.BeginTxFunc(ctx, s.db, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
-		err := tx.QueryRow(ctx, `WITH sf AS (SELECT f.title,f.welcome,f.whatsapp,t.slug,t.name,t.currency_code,s.name AS branch,s.address
+		err := tx.QueryRow(ctx, `WITH sf AS (SELECT f.title,f.welcome,f.whatsapp,t.slug,t.name,t.currency_code,s.name AS branch,s.address,f.accent,
+					CASE WHEN f.logo_png IS NULL THEN 0 ELSE f.logo_version END AS logo
 				FROM storefronts f JOIN tenants t ON t.id=f.tenant_id JOIN stores s ON (s.tenant_id,s.id)=(f.tenant_id,f.store_id)
 				WHERE t.slug=$1 AND t.status='active' AND f.enabled AND s.status='active')
-			SELECT slug,coalesce(NULLIF(title,''),name),welcome,whatsapp,currency_code,branch,address FROM sf`, slug).
-			Scan(&result.Slug, &result.Name, &result.Welcome, &result.WhatsApp, &result.Currency, &result.Branch, &result.Address)
+			SELECT slug,coalesce(NULLIF(title,''),name),welcome,whatsapp,currency_code,branch,address,accent,logo FROM sf`, slug).
+			Scan(&result.Slug, &result.Name, &result.Welcome, &result.WhatsApp, &result.Currency, &result.Branch, &result.Address, &result.Accent, &result.Logo)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

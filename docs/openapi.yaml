@@ -4391,6 +4391,71 @@ paths:
               schema: {$ref: '#/components/schemas/PublicStorefront'}
         '404': {$ref: '#/components/responses/Error'}
         '429': {$ref: '#/components/responses/Error'}
+  /api/v1/storefront/logo:
+    get:
+      operationId: getStorefrontLogo
+      summary: Ver el logo de la tienda, aunque no esté publicada.
+      description: Requiere storefront:manage.
+      responses:
+        '200':
+          description: Logo en PNG.
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: uploadStorefrontLogo
+      summary: Subir o reemplazar el logo de la tienda.
+      description: >-
+        Requiere storefront:manage. Acepta PNG o JPEG de hasta 4 MB y 4096 px por lado. Se guarda como PNG de
+        hasta 512 px por lado, conservando la transparencia. Cada carga sube la versión del logo.
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: {type: string, format: binary}
+          image/jpeg:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          description: Configuración con la nueva versión del logo.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorefrontAdmin'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+    delete:
+      operationId: removeStorefrontLogo
+      summary: Quitar el logo de la tienda.
+      description: Requiere storefront:manage.
+      responses:
+        '200':
+          description: Configuración sin logo.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorefrontAdmin'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /api/v1/public/storefronts/{slug}/logo:
+    parameters:
+      - $ref: '#/components/parameters/StorefrontSlug'
+    get:
+      operationId: getPublicStorefrontLogo
+      summary: Logo de una tienda publicada.
+      security: []
+      responses:
+        '200':
+          description: Logo en PNG; se puede guardar una hora.
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
   /api/v1/public/storefronts/{slug}/products/{id}:
     get:
       operationId: getPublicStorefrontProduct
@@ -4521,12 +4586,14 @@ components:
         title: {type: string, maxLength: 80, description: Vacío usa el nombre del comercio.}
         welcome: {type: string, maxLength: 300}
         showSoldOut: {type: boolean}
+        accent: {type: string, pattern: '^(#[0-9a-fA-F]{6})?$', description: 'Color principal de la página (#rrggbb). Vacío u omitido usa el verde original.'}
     StorefrontAdmin:
       allOf:
         - {$ref: '#/components/schemas/StorefrontSettings'}
         - type: object
-          required: [slug, commerceName, currency, stores, products, summary]
+          required: [slug, commerceName, currency, stores, products, summary, logo]
           properties:
+            logo: {type: integer, minimum: 0, description: 'Versión del logo; 0 si no hay logo.'}
             slug: {type: string}
             commerceName: {type: string}
             currency: {type: string}
@@ -4580,8 +4647,10 @@ components:
         available: {type: boolean}
     PublicStorefront:
       type: object
-      required: [slug, name, welcome, whatsapp, currency, branch, address, categories, products]
+      required: [slug, name, welcome, whatsapp, currency, branch, address, accent, logo, categories, products]
       properties:
+        accent: {type: string, description: 'Color principal (#rrggbb) o vacío.'}
+        logo: {type: integer, minimum: 0, description: 'Versión del logo; 0 si no hay. La imagen está en /logo?v=<versión>.'}
         slug: {type: string}
         name: {type: string}
         welcome: {type: string}

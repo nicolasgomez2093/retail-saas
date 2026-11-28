@@ -169,6 +169,8 @@ export function StorefrontAdmin({ storeRevision, onAccessChange }: { storeRevisi
           <small className="pu-hint">{form.welcome.length}/300 · Aparece arriba del catálogo.</small>
         </label>
       </div>
+      <Appearance data={data} accent={form.accent} busy={busy} onAccent={(value) => set('accent', value)}
+        onLogo={(result) => { setData(result); setNotice(result.logo ? 'Logo actualizado.' : 'Quitaste el logo.'); }} />
       <div className="sf-switches">
         <label className="sf-switch">
           <input type="checkbox" role="switch" checked={form.showSoldOut} disabled={busy} onChange={(event) => set('showSoldOut', event.target.checked)} />
@@ -235,11 +237,84 @@ export function StorefrontAdmin({ storeRevision, onAccessChange }: { storeRevisi
 
 function settingsOf(data: Admin): StorefrontSettings {
   return { enabled: data.enabled, storeId: data.storeId ?? (data.stores.length === 1 ? data.stores[0].id : null), whatsapp: data.whatsapp,
-    title: data.title, welcome: data.welcome, showSoldOut: data.showSoldOut };
+    title: data.title, welcome: data.welcome, showSoldOut: data.showSoldOut, accent: data.accent };
 }
 
 function message(cause: unknown) {
   if (cause instanceof ApiError && cause.code === 'storefront_incomplete') return 'Para publicar la tienda elegí la sucursal y cargá el WhatsApp del local.';
   if (cause instanceof ApiError && cause.status === 400) return 'Revisá los datos: el WhatsApp va con código de país y de área (por ejemplo 54 9 11 5555-6666).';
   return cause instanceof Error ? cause.message : 'No pudimos completar la operación.';
+}
+
+const accents: [string, string][] = [
+  ['', 'Verde (original)'], ['#1d4ed8', 'Azul'], ['#0f766e', 'Turquesa'], ['#7c3aed', 'Violeta'],
+  ['#be185d', 'Fucsia'], ['#c2410c', 'Naranja'], ['#b91c1c', 'Rojo'], ['#111827', 'Negro'],
+];
+
+/** Logo (uploaded at once) and main color (saved with the form), with a small live preview of the page header. */
+function Appearance({ data, accent, busy, onAccent, onLogo }: {
+  data: Admin; accent: string; busy: boolean; onAccent: (value: string) => void; onLogo: (result: Admin) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const shown = accent || '#1f5c48';
+  const name = data.title || data.commerceName;
+
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    if (!['image/png', 'image/jpeg'].includes(file.type)) { setError('Elegí una imagen PNG o JPG.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setError('El logo tiene que pesar hasta 4 MB.'); return; }
+    setUploading(true); setError('');
+    try { onLogo(await api.uploadStorefrontLogo(file)); } catch (cause) { setError(message(cause)); } finally { setUploading(false); }
+  }
+  async function remove() {
+    setUploading(true); setError('');
+    try { onLogo(await api.removeStorefrontLogo()); } catch (cause) { setError(message(cause)); } finally { setUploading(false); }
+  }
+
+  return <fieldset className="sf-appearance" disabled={busy || uploading}>
+    <legend>Apariencia</legend>
+    <div className="sf-appearance-grid">
+      <div className="sf-logo-field">
+        <span className="sf-field-label">Logo</span>
+        <div className="sf-logo-row">
+          <span className="sf-logo-box">{data.logo ? <img src={api.storefrontLogoURL(data.logo)} alt="Logo actual" /> : <small>Sin logo</small>}</span>
+          <div className="sf-logo-actions">
+            <label className="pu-btn sf-file">{uploading ? 'Subiendo…' : data.logo ? 'Cambiar logo' : 'Subir logo'}
+              <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ''; }} />
+            </label>
+            {data.logo > 0 && <button type="button" className="pu-btn" onClick={() => void remove()}>Quitar</button>}
+          </div>
+        </div>
+        <small className="pu-hint">PNG o JPG. Mejor cuadrado y con fondo transparente. Se guarda al elegirlo.</small>
+      </div>
+      <div className="sf-color-field">
+        <span className="sf-field-label">Color principal</span>
+        <div className="sf-swatches" role="radiogroup" aria-label="Color principal">
+          {accents.map(([value, label]) => <button key={label} type="button" role="radio" aria-checked={accent === value} title={label} aria-label={label}
+            style={{ background: value || '#1f5c48' }} onClick={() => onAccent(value)} />)}
+          <label className="sf-custom-color" title="Otro color">
+            <input type="color" aria-label="Elegir otro color" value={shown} onChange={(event) => onAccent(event.target.value)} />
+            <span>Otro</span>
+          </label>
+        </div>
+        <small className="pu-hint">Se usa en la portada y en los botones. Se guarda con «Guardar cambios».</small>
+      </div>
+    </div>
+    <div className="sf-preview" aria-label="Vista previa" style={{ background: shown, color: accentText(shown) }}>
+      {data.logo ? <span className="sf-preview-logo"><img src={api.storefrontLogoURL(data.logo)} alt="" /></span> : null}
+      <strong>{name}</strong>
+      <span className="sf-preview-button" style={{ background: accentText(shown), color: shown }}>Agregar al carrito</span>
+    </div>
+    {error && <p className="pu-alert" role="alert">{error}</p>}
+  </fieldset>;
+}
+
+// Same rule as the public page: white or dark text, whichever reads better on the chosen color.
+function accentText(hex: string) {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!match) return '#fff';
+  const [r, g, b] = match.slice(1).map((part) => { const c = parseInt(part, 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.0711 ? '#fff' : '#1c2321';
 }

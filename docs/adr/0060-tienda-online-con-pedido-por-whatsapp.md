@@ -45,6 +45,18 @@ Los comercios quieren mostrar sus productos en internet y recibir pedidos sin ar
   - Los talles conocidos se ordenan solos (XS…XXL y numéricos); si hay alguno que no reconoce, se respeta el orden del catálogo.
   - Si un color no tiene muestra cargada, se usa una para los nombres comunes (Negro, Celeste, Bordó…); si no la reconoce, va sin muestra.
 
+- **Apariencia (migración 050):**
+  - **Logo:**
+    - Acepta PNG o JPG de hasta 4 MB.
+    - Se guarda como PNG de hasta 512 px, conservando la transparencia.
+    - Se muestra en el encabezado, en la portada y como ícono de la pestaña.
+    - Cada carga sube una versión, así el navegador nunca muestra uno viejo.
+  - **Color principal:**
+    - Se elige entre 8 colores sugeridos o uno a elección.
+    - Pinta la portada, los botones y los detalles.
+    - El texto sobre ese color es blanco u oscuro, el que contraste más (luminancia relativa de WCAG).
+    - Los tonos claros, oscuros y de foco se derivan del mismo color.
+
 ## Consecuencias
 
 - Entre que el cliente arma el carrito y el local lo lee, el stock puede cambiar. Por eso el mensaje y la tienda aclaran que el local confirma precio, stock y entrega.

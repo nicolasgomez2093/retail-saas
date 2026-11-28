@@ -82,3 +82,11 @@ test('muestra de color: gana la del catálogo, si no hay usa nombres comunes', (
   assert.equal(cart.swatchColor('Marrón oscuro', null), '#6b4528');
   assert.equal(cart.swatchColor('Estampado', null), null);
 });
+
+test('texto sobre el color del comercio: blanco en colores oscuros, oscuro en claros', () => {
+  assert.equal(cart.accentInk('#1f5c48'), '#fff');
+  assert.equal(cart.accentInk('#c0392b'), '#fff');
+  assert.equal(cart.accentInk('#f2cf4a'), '#1c2321');
+  assert.equal(cart.accentInk('#ffffff'), '#1c2321');
+  assert.equal(cart.accentInk('rojo'), '#fff');
+});

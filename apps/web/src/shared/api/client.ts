@@ -408,6 +408,8 @@ export type StorefrontSettings = {
   title: string;
   welcome: string;
   showSoldOut: boolean;
+  /** Main color of the public page (#rrggbb); empty keeps the default. */
+  accent: string;
 };
 
 export type StorefrontProductStatus = 'published' | 'sold_out' | 'hidden' | 'no_photo' | 'no_price';
@@ -427,6 +429,8 @@ export type StorefrontAdminProduct = {
 
 export type StorefrontAdmin = StorefrontSettings & {
   slug: string;
+  /** Logo version, 0 without logo. */
+  logo: number;
   commerceName: string;
   currency: string;
   stores: { id: string; code: string; name: string }[];
@@ -630,6 +634,9 @@ export const api = {
 
   storefront: () => request<StorefrontAdmin>('/storefront'),
   saveStorefront: (settings: StorefrontSettings) => request<StorefrontAdmin>('/storefront', json('PUT', settings)),
+  uploadStorefrontLogo: (file: Blob) => request<StorefrontAdmin>('/storefront/logo', { method: 'PUT', headers: { 'Content-Type': file.type }, body: file }),
+  removeStorefrontLogo: () => request<StorefrontAdmin>('/storefront/logo', { method: 'DELETE' }),
+  storefrontLogoURL: (version: number) => '/api/v1/storefront/logo?v=' + version,
   setStorefrontHidden: (productId: string, hidden: boolean) =>
     request<void>('/storefront/products/' + encodeURIComponent(productId), json('PUT', { hidden })),
 

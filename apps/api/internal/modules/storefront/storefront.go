@@ -26,6 +26,7 @@ var ErrIncomplete = errors.New("para publicar la tienda elegí la sucursal y car
 const MaxAdminProducts = 2000
 
 var whatsappPattern = regexp.MustCompile(`^[1-9][0-9]{7,14}$`)
+var accentPattern = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 type Settings struct {
 	Enabled     bool    `json:"enabled"`
@@ -34,6 +35,8 @@ type Settings struct {
 	Title       string  `json:"title"`
 	Welcome     string  `json:"welcome"`
 	ShowSoldOut bool    `json:"showSoldOut"`
+	// Accent is the main color of the public page (#rrggbb); empty keeps the default green.
+	Accent string `json:"accent"`
 }
 
 type StoreOption struct {
@@ -81,6 +84,8 @@ type Admin struct {
 	Stores       []StoreOption  `json:"stores"`
 	Products     []AdminProduct `json:"products"`
 	Summary      AdminSummary   `json:"summary"`
+	// Logo changes with every upload so browsers fetch the new one; 0 means no logo.
+	Logo int `json:"logo"`
 }
 
 type Service struct {
@@ -103,10 +108,11 @@ func (s Service) Admin(ctx context.Context, actor auth.Identity) (Admin, error) 
 func readAdmin(ctx context.Context, tx pgx.Tx, tenantID string, result *Admin) error {
 	result.ShowSoldOut = true
 	if err := tx.QueryRow(ctx, `SELECT t.slug,t.name,t.currency_code,coalesce(f.enabled,false),f.store_id::text,coalesce(f.whatsapp,''),
-			coalesce(f.title,''),coalesce(f.welcome,''),coalesce(f.show_sold_out,true)
+			coalesce(f.title,''),coalesce(f.welcome,''),coalesce(f.show_sold_out,true),coalesce(f.accent,''),
+			CASE WHEN f.logo_png IS NULL THEN 0 ELSE f.logo_version END
 		FROM tenants t LEFT JOIN storefronts f ON f.tenant_id=t.id WHERE t.id=$1`, tenantID).
 		Scan(&result.Slug, &result.CommerceName, &result.Currency, &result.Enabled, &result.StoreID, &result.WhatsApp,
-			&result.Title, &result.Welcome, &result.ShowSoldOut); err != nil {
+			&result.Title, &result.Welcome, &result.ShowSoldOut, &result.Accent, &result.Logo); err != nil {
 		return err
 	}
 	rows, err := tx.Query(ctx, "SELECT id,code,name FROM stores WHERE tenant_id=$1 AND status='active' ORDER BY code,id", tenantID)
@@ -183,6 +189,10 @@ func readAdmin(ctx context.Context, tx pgx.Tx, tenantID string, result *Admin) e
 func (s Service) Save(ctx context.Context, actor auth.Identity, input Settings) (Admin, error) {
 	input.WhatsApp = normalizeWhatsApp(input.WhatsApp)
 	input.Title, input.Welcome = strings.TrimSpace(input.Title), strings.TrimSpace(input.Welcome)
+	input.Accent = strings.ToLower(strings.TrimSpace(input.Accent))
+	if input.Accent != "" && !accentPattern.MatchString(input.Accent) {
+		return Admin{}, ErrInvalid
+	}
 	if input.WhatsApp != "" && !whatsappPattern.MatchString(input.WhatsApp) || !validText(input.Title, 80) || !validText(input.Welcome, 300) ||
 		input.StoreID != nil && !validID(*input.StoreID) {
 		return Admin{}, ErrInvalid
@@ -202,11 +212,12 @@ func (s Service) Save(ctx context.Context, actor auth.Identity, input Settings) 
 				return err
 			}
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO storefronts(tenant_id,enabled,store_id,whatsapp,title,welcome,show_sold_out,updated_at,updated_by)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,now(),$8)
+		if _, err := tx.Exec(ctx, `INSERT INTO storefronts(tenant_id,enabled,store_id,whatsapp,title,welcome,show_sold_out,accent,updated_at,updated_by)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$9,now(),$8)
 			ON CONFLICT (tenant_id) DO UPDATE SET enabled=excluded.enabled,store_id=excluded.store_id,whatsapp=excluded.whatsapp,
-				title=excluded.title,welcome=excluded.welcome,show_sold_out=excluded.show_sold_out,updated_at=now(),updated_by=excluded.updated_by`,
-			actor.TenantID, input.Enabled, input.StoreID, input.WhatsApp, input.Title, input.Welcome, input.ShowSoldOut, actor.UserID); err != nil {
+				title=excluded.title,welcome=excluded.welcome,show_sold_out=excluded.show_sold_out,accent=excluded.accent,
+				updated_at=now(),updated_by=excluded.updated_by`,
+			actor.TenantID, input.Enabled, input.StoreID, input.WhatsApp, input.Title, input.Welcome, input.ShowSoldOut, actor.UserID, input.Accent); err != nil {
 			return err
 		}
 		return readAdmin(ctx, tx, actor.TenantID, &result)

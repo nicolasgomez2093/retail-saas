@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { ShopError, shopAPI, type Shop as ShopData, type ShopProduct, type ShopProductDetail, type ShopVariant } from './api';
-import { addLine, money, orderMessage, parseCart, priceText, setQuantity, sortSizes, swatchColor, total, units, variantLabel, whatsappURL, maxQuantity, type CartLine } from './cart';
+import { accentInk, addLine, money, orderMessage, parseCart, priceText, setQuantity, sortSizes, swatchColor, total, units, variantLabel, whatsappURL, maxQuantity, type CartLine } from './cart';
 
 type Route = { slug: string; view: 'catalog' } | { slug: string; view: 'product'; id: string } | { slug: string; view: 'cart' };
 
@@ -85,6 +85,17 @@ function Store({ route, go, back: goBack }: { route: Route; go: (route: Route, r
     if (shop) document.title = shop.name + (route.view === 'cart' ? ' · Carrito' : ' · Tienda');
   }, [shop, route.view]);
 
+  // The commerce logo is also the tab icon; its color tints the browser bar on phones.
+  useEffect(() => {
+    if (!shop) return;
+    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.append(icon); }
+    if (shop.logo) { icon.type = 'image/png'; icon.href = shopAPI.logo(shop.slug, shop.logo); }
+    let theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!theme) { theme = document.createElement('meta'); theme.name = 'theme-color'; document.head.append(theme); }
+    theme.content = shop.accent || '#1f5c48';
+  }, [shop]);
+
   const open = useCallback((next: Route) => {
     if (route.view === 'catalog') catalogScroll.current = window.scrollY;
     go(next);
@@ -97,10 +108,12 @@ function Store({ route, go, back: goBack }: { route: Route; go: (route: Route, r
   const count = units(lines);
   const back = () => goBack({ slug: route.slug, view: 'catalog' });
 
-  return <div className="shop">
+  const theme = (shop.accent ? { '--s-accent': shop.accent, '--s-accent-ink': accentInk(shop.accent) } : {}) as CSSProperties;
+  return <div className="shop" style={theme}>
     <header className="shop-header">
       <a className="shop-brand" href={'/tienda/' + shop.slug} onClick={(event) => { event.preventDefault(); go({ slug: shop.slug, view: 'catalog' }); }}>
-        <span className="shop-logo" aria-hidden="true">{shop.name.trim().charAt(0).toUpperCase()}</span>
+        <span className={'shop-logo' + (shop.logo ? ' image' : '')} aria-hidden="true">
+          {shop.logo ? <img src={shopAPI.logo(shop.slug, shop.logo)} alt="" /> : shop.name.trim().charAt(0).toUpperCase()}</span>
         <span><strong>{shop.name}</strong><small>{shop.branch}</small></span>
       </a>
       <nav className="shop-header-actions" aria-label="Accesos">
@@ -158,7 +171,10 @@ function Catalog({ shop, restore, onOpen }: { shop: ShopData; restore: { current
   return <>
     <section className="shop-hero" aria-labelledby="shop-hero-title">
       <div className="shop-hero-text">
-        <h1 id="shop-hero-title">{shop.name}</h1>
+        <div className="shop-hero-brand">
+          {shop.logo > 0 && <span className="shop-hero-logo"><img src={shopAPI.logo(shop.slug, shop.logo)} alt={'Logo de ' + shop.name} /></span>}
+          <h1 id="shop-hero-title">{shop.name}</h1>
+        </div>
         {shop.welcome ? <p>{shop.welcome}</p> : <p>Elegí tus productos y mandanos el pedido por WhatsApp.</p>}
       </div>
       <ol className="shop-steps" aria-label="Cómo comprar">

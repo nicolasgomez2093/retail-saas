@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"errors"
+	"io"
+	"mime"
 	"net/http"
 	"sync"
 	"time"
@@ -42,6 +44,34 @@ func registerStorefront(router *gin.RouterGroup, db *pgxpool.Pool, authService *
 		respondStorefront(c, http.StatusNoContent, nil, err)
 	}))
 
+	router.PUT("/storefront/logo", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		contentType, _, err := mime.ParseMediaType(c.GetHeader("Content-Type"))
+		if err != nil || (contentType != "image/jpeg" && contentType != "image/png") {
+			fail(c, 415, "unsupported_media_type", storefront.ErrLogo.Error())
+			return
+		}
+		body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, storefront.MaxLogoUpload))
+		if err != nil {
+			fail(c, 413, "logo_too_large", storefront.ErrLogo.Error())
+			return
+		}
+		result, err := svc.SetLogo(c.Request.Context(), actor, body)
+		respondStorefront(c, http.StatusOK, result, err)
+	}))
+	router.DELETE("/storefront/logo", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		result, err := svc.SetLogo(c.Request.Context(), actor, nil)
+		respondStorefront(c, http.StatusOK, result, err)
+	}))
+	router.GET("/storefront/logo", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		body, err := svc.AdminLogo(c.Request.Context(), actor)
+		if err != nil {
+			respondStorefront(c, 0, nil, err)
+			return
+		}
+		c.Header("Cache-Control", "private, no-cache")
+		c.Data(http.StatusOK, "image/png", body)
+	}))
+
 	// Public storefront: no session, only what a shopper may see, limited per client address.
 	limits := newClientLimiter(rate.Every(100*time.Millisecond), 60)
 	public := router.Group("/public/storefronts/:slug", func(c *gin.Context) {
@@ -55,6 +85,16 @@ func registerStorefront(router *gin.RouterGroup, db *pgxpool.Pool, authService *
 	public.GET("", func(c *gin.Context) {
 		result, err := svc.Public(c.Request.Context(), c.Param("slug"))
 		respondStorefront(c, http.StatusOK, result, err)
+	})
+	public.GET("/logo", func(c *gin.Context) {
+		body, err := svc.PublicLogo(c.Request.Context(), c.Param("slug"))
+		if err != nil {
+			respondStorefront(c, 0, nil, err)
+			return
+		}
+		// The page asks with ?v=<version>, so a new logo is a new address.
+		c.Header("Cache-Control", "public, max-age=3600")
+		c.Data(http.StatusOK, "image/png", body)
 	})
 	public.GET("/products/:id", func(c *gin.Context) {
 		result, err := svc.PublicProduct(c.Request.Context(), c.Param("slug"), c.Param("id"))
@@ -91,6 +131,8 @@ func respondStorefront(c *gin.Context, status int, result any, err error) {
 		fail(c, 400, "invalid_request", err.Error())
 	case errors.Is(err, storefront.ErrIncomplete):
 		fail(c, 400, "storefront_incomplete", err.Error())
+	case errors.Is(err, storefront.ErrLogo):
+		fail(c, 400, "invalid_logo", err.Error())
 	case errors.Is(err, storefront.ErrNotFound):
 		fail(c, 404, "not_found", err.Error())
 	default:

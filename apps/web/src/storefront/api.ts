@@ -19,6 +19,10 @@ export type Shop = {
   currency: string;
   branch: string;
   address: string;
+  /** Main color chosen by the commerce (#rrggbb), empty for the default. */
+  accent: string;
+  /** Logo version; 0 when the commerce has no logo. */
+  logo: number;
   categories: { id: string; name: string }[];
   products: ShopProduct[];
 };
@@ -56,6 +60,7 @@ export const shopAPI = {
   shop: (slug: string, signal?: AbortSignal) => get<Shop>(encodeURIComponent(slug), signal),
   product: (slug: string, id: string, signal?: AbortSignal) =>
     get<ShopProductDetail>(encodeURIComponent(slug) + '/products/' + encodeURIComponent(id), signal),
+  logo: (slug: string, version: number) => '/api/v1/public/storefronts/' + encodeURIComponent(slug) + '/logo?v=' + version,
   image: (slug: string, imageId: string, size: 'card' | 'detail' = 'card') =>
     '/api/v1/public/storefronts/' + encodeURIComponent(slug) + '/images/' + encodeURIComponent(imageId) + '?size=' + size,
 };
