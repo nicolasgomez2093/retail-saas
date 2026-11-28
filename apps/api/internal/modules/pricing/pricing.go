@@ -19,6 +19,7 @@ import (
 var ErrInvalid = errors.New("verificá los datos de la lista o del precio")
 var ErrNotFound = errors.New("lista, sucursal o variante inexistente")
 var ErrNameTaken = errors.New("ya hay una lista con ese nombre")
+var ErrNegative = errors.New("con ese cambio algún precio quedaría por debajo de cero")
 
 type List struct {
 	ID   string `json:"id"`

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { api, type CashRegisters, type Receivable, type ReceivablePage, type ReceivableStatus } from '../../shared/api/client';
 
 import '../purchases/purchases.css';
@@ -17,6 +17,7 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
 }) {
   const [retry, setRetry] = useState(0);
   const [selected, setSelected] = useState<Receivable | null>(null);
+  const [paid, setPaid] = useState('');
   const [status, setStatus] = useState<ReceivableStatus>('pending');
   const [query, setQuery] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -82,6 +83,16 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
     dateStyle: 'short', timeStyle: 'short', timeZone: registers.timezone,
   });
 
+  // The list reloads after a payment and the detail is drawn again: the confirmation lives here so it is not lost.
+  const collections = (item: Receivable) => <>
+    {paid === item.id && <p role="status" className="receivable-flash">✓ Abono registrado.</p>}
+    <ReceivableCollections key={item.id} item={item} storeId={storeId} registers={registers}
+      disabled={disabled} revision={revision} onCollected={() => { setPaid(item.id); setOffset(0); onCollected(); }} onPending={(pending) => {
+        if (pending) setPaid('');
+        setLocked(pending);
+        onPending(pending);
+      }} />
+  </>;
   return <div className="customers-view pu">
     <div hidden={showAccounts} className="customers-directory-view">
       <h2 className="pos-sr-only">Directorio de clientes</h2>
@@ -202,7 +213,8 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
       <tbody>{current.page.items.map((item) => {
         const settled = Number(item.outstandingAmount) === 0;
         const partial = !settled && item.outstandingAmount !== item.originalAmount;
-        return <tr key={item.id} aria-current={selected?.id === item.id || undefined}>
+        const open = selected?.id === item.id;
+        return <Fragment key={item.id}><tr aria-current={open || undefined}>
           <th scope="row">{item.customerName}</th>
           <td>V-{item.saleNumber}<small><time dateTime={item.createdAt}>{dates.format(new Date(item.createdAt))}</time></small></td>
           <td className="num" data-label="Fiado">{money(item.currency, item.originalAmount)}</td>
@@ -213,21 +225,19 @@ export function Receivables({ active, showAccounts, storeId, revision, ticketBus
             <button type="button" className="pu-btn" disabled={ticketBusy} onClick={(event) => onTicket(item.saleId, event.currentTarget)}>
               Ticket<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
             </button>
-            <button type="button" className="pu-btn primary" disabled={locked || disabled} onClick={() => setSelected(item)}>
-              {settled ? 'Ver abonos' : 'Abonos'}<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
+            <button type="button" className="pu-btn primary" disabled={locked || disabled} aria-expanded={open}
+              aria-controls={open ? 'abonos-' + item.id : undefined} onClick={() => setSelected(open ? null : item)}>
+              {open ? 'Cerrar' : settled ? 'Ver abonos' : 'Abonos'}<span className="pos-sr-only"> de la venta {item.saleNumber}</span>
             </button>
           </td>
-        </tr>; })}</tbody>
+        </tr>{open && <tr className="receivable-detail-row" id={'abonos-' + item.id}><td colSpan={6}>{collections(item)}</td></tr>}</Fragment>; })}</tbody>
     </table></div></div>}
     {(offset > 0 || current?.page?.hasMore) && <nav className="actions" aria-label="Páginas de fiados">
       <button type="button" disabled={!current || offset === 0 || locked} onClick={() => setOffset(offset - pageSize)}>Anterior</button>
       <button type="button" disabled={!current?.page?.hasMore || locked} onClick={() => setOffset(offset + pageSize)}>Siguiente</button>
     </nav>}
-    {selected && <ReceivableCollections key={selected.id} item={selected} storeId={storeId} registers={registers}
-      disabled={disabled} revision={revision} onCollected={() => { setOffset(0); onCollected(); }} onPending={(pending) => {
-        setLocked(pending);
-        onPending(pending);
-      }} />}
+    {/* A receivable that just left the filtered list (for example, settled) keeps its detail open below. */}
+    {selected && current?.page && !current.page.items.some((item) => item.id === selected.id) && collections(selected)}
     </div>
   </div>;
 }

@@ -61,6 +61,14 @@ func registerPricing(router *gin.RouterGroup, db *pgxpool.Pool, authService *aut
 		result, err := svc.SetItem(c.Request.Context(), actor, c.Param("id"), c.Param("variantId"), amount)
 		respondPricing(c, http.StatusOK, result, err)
 	}))
+	// Bulk change of a list: apply=false only previews; apply=true writes every line in one transaction.
+	router.POST("/price-lists/:id/adjustments", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		var input pricing.AdjustInput
+		if readAdminJSON(c, &input) {
+			result, err := svc.Adjust(c.Request.Context(), actor, c.Param("id"), input)
+			respondPricing(c, http.StatusOK, result, err)
+		}
+	}))
 	router.GET("/stores/:id/variants/:variantId/price", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
 		result, err := svc.Resolve(c.Request.Context(), actor, c.Param("id"), c.Param("variantId"))
 		respondPricing(c, http.StatusOK, result, err)
@@ -75,6 +83,8 @@ func respondPricing(c *gin.Context, status int, result any, err error) {
 		c.JSON(status, result)
 	case errors.Is(err, pricing.ErrInvalid):
 		fail(c, 400, "invalid_request", err.Error())
+	case errors.Is(err, pricing.ErrNegative):
+		fail(c, 409, "price_negative", err.Error())
 	case errors.Is(err, pricing.ErrNotFound):
 		fail(c, 404, "not_found", err.Error())
 	case errors.Is(err, pricing.ErrNameTaken):

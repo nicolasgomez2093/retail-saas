@@ -46,7 +46,6 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
       attempt.current = null;
       setUncertain(false);
       setAmount('');
-      setNotice('Abono registrado.');
       setOffset(0);
       onCollected();
       onPending(false);
@@ -85,9 +84,8 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
     }
   }
 
-  return <section className="inventory-form" aria-label={'Abonos de la venta ' + item.saleNumber}>
-    <h3>Abonos de la venta {item.saleNumber}</h3>
-    <p>{item.customerName}</p>
+  return <section className="receivable-detail" aria-label={'Abonos de la venta ' + item.saleNumber}>
+    <h3>Abonos de la venta {item.saleNumber} <small>{item.customerName}</small></h3>
     {!current && <p role="status">Consultando abonos…</p>}
     {current?.error && <p role="alert">{current.error}</p>}
     {error && <p role="alert">{error}</p>}
@@ -95,12 +93,12 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
     {current?.page && <>
       <dl className="receivable-figures">
         <div><dt>Fiado</dt><dd>{display(item.originalAmount)}</dd></div>
-        <div><dt>Abonado y compensado</dt><dd>{display(paidOf(item.originalAmount, current.page.outstandingAmount))}</dd></div>
+        <div><dt>Abonado</dt><dd>{display(paidOf(item.originalAmount, current.page.outstandingAmount))}</dd></div>
         <div className="receivable-due"><dt>Saldo pendiente</dt><dd>{display(current.page.outstandingAmount)}</dd></div>
       </dl>
       {current.page.outstandingAmount !== '0.00' && (sessions.length === 0
         ? <p>Abrí una caja en esta sucursal para registrar un abono.</p>
-        : <form className="inventory-form" aria-label="Registrar abono" onSubmit={submit}>
+        : <form className="receivable-pay-form" aria-label="Registrar abono" onSubmit={submit}>
           <label>Caja del abono
             <select name="session" disabled={disabled || busy || uncertain} required>
               {sessions.map((session) => <option key={session.id} value={session.openSessionId ?? ''}>{session.name} ({session.code})</option>)}
@@ -113,7 +111,7 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
           </label>
           <label>Importe del abono
             <input inputMode="decimal" required maxLength={19} value={amount} disabled={disabled || busy || uncertain}
-              onChange={(event) => setAmount(event.target.value)} />
+              placeholder={posPrice(current.page.outstandingAmount)} onChange={(event) => setAmount(event.target.value)} />
           </label>
           <button disabled={disabled || busy || uncertain}>Registrar abono</button>
         </form>)}

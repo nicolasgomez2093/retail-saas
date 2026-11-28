@@ -67,7 +67,6 @@
   .label-dialog .label-preview { margin-block: .65rem; }
 }
 
-@page retail-label { size: 60mm 40mm; margin: 0; }
 @media print {
   body:has(> .label-print) { margin: 0; padding: 0; background: white; }
   body:has(> .label-print) > :not(.label-print), .label-dialog { display: none !important; }
@@ -92,8 +91,13 @@
   .label-batch-rows > li { grid-template-columns: minmax(0,1fr) minmax(72px,.45fr); }
   .label-batch-rows .checkbox { grid-column: 1 / -1; }
 }
-.label-wide .retail-label { width: 100mm; }
-@page retail-label-wide { size: 100mm 40mm; margin: 0; }
-@media print {
-  .label-print.label-wide .retail-label { page: retail-label-wide; }
+/* Short rolls (25 mm): one line of name, smaller type. */
+.retail-label[data-compact] { padding: 1.2mm 2mm; gap: .3mm; font-size: 2.5mm; line-height: 2.9mm; }
+.retail-label[data-compact] .retail-label-product { -webkit-line-clamp: 1; font-size: 2.9mm; line-height: 3.3mm; }
+.retail-label[data-compact] .retail-label-code { font-size: 2.2mm; }
+.retail-label img { object-fit: fill; }
+@media screen {
+  .label-run { margin-bottom: .75rem; border: 1px solid #d9e2dc; border-radius: .6rem; }
+  .label-run > summary { cursor: pointer; padding: .6rem .8rem; font-weight: 700; }
+  .label-run ul { margin: 0; padding: 0 .8rem .6rem 1.8rem; max-height: 14rem; overflow: auto; }
 }

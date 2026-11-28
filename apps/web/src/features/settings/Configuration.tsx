@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StoreAdmin } from '../stores/StoreAdmin';
 import { UserAdmin } from '../users/UserAdmin';
 import { PricingAdmin } from '../pricing/PricingAdmin';
+import { LabelSettings } from './LabelSettings';
 
 export const configurationViews = [
   ['configuracion/sucursales', 'Sucursales', 'Administrá los datos y el estado de tus locales.'],
@@ -40,6 +41,7 @@ export function Configuration({ view, branch, storeRevision, onStoresChanged, on
           <span>{access[id] === 'error' ? 'Hay un problema de conexión. Abrí la sección para reintentar.' : description}</span>
         </a>)}
       </div>
+      <LabelSettings />
     </>}
     {view && view !== 'configuracion' && access[view] === 'denied' &&
       <p role="status">No tenés permiso para administrar {configurationViews.find(([id]) => id === view)?.[1].toLocaleLowerCase('es-AR')}.</p>}

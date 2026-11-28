@@ -6,6 +6,8 @@ import {
 import { VariantPrice, type PriceAccess } from '../pricing/VariantPrice';
 import { BarcodeScanner, ScannedStock } from './BarcodeScanner';
 import { LabelDialog } from './LabelDialog';
+import { posPrice } from '../pos/priceDisplay';
+import { BulkBar, BulkLabels, BulkPrices, maxSelection, type Selection } from './CatalogBulk';
 import { QuickProductCreate } from './QuickProductCreate';
 import { CatalogCSV } from './CatalogCSV';
 import { ProductQuickView } from './ProductQuickView';
@@ -66,8 +68,8 @@ function VariantInfo({ variant }: { variant: Variant }) {
 function PreviewPrice({ preview }: { preview?: CatalogPreview }) {
   if (!preview?.currency) return <>—</>;
   if (preview.minPrice === null) return <>Sin precio configurado</>;
-  const minimum = preview.currency + ' ' + preview.minPrice.replace('.', ',');
-  const maximum = preview.maxPrice?.replace('.', ',');
+  const minimum = preview.currency + '\u00a0' + posPrice(preview.minPrice);
+  const maximum = preview.maxPrice ? posPrice(preview.maxPrice) : undefined;
   return <>{minimum}{preview.minPrice !== preview.maxPrice && maximum && ' a ' + maximum}
     {preview.pricePartial && <small className="catalog-partial-price">Algunas variantes sin precio</small>}
   </>;
@@ -150,6 +152,14 @@ export function Catalog({ stores, priceRevision, stockRevision, branch, hash, ac
   const listKey = [navigation, scope, priceRevision, stockRevision, reload].join(':');
   const [list, setList] = useState<{ key: string; page?: CatalogPage; error?: string }>();
   const [quickProduct, setQuickProduct] = useState<{ id: string; open: boolean }>();
+  // Products chosen for bulk labels or prices; the choice survives searches and pages.
+  const [selection, setSelection] = useState<Selection>(() => new Map());
+  const [bulk, setBulk] = useState<{ kind: 'labels' | 'prices'; origin: HTMLElement | null } | null>(null);
+  const toggleSelected = (id: string, name: string, on: boolean) => setSelection((current) => {
+    const next = new Map(current);
+    if (on && next.size < maxSelection) next.set(id, name); else next.delete(id);
+    return next;
+  });
   useLayoutEffect(() => { setQuickProduct((current) => current?.open ? current : undefined); }, [scope, navigation, stockRevision]);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tool, setTool] = useState<'csv' | 'categories' | 'brands' | 'attributes' | 'identifiers'>('csv');
@@ -846,13 +856,20 @@ export function Catalog({ stores, priceRevision, stockRevision, branch, hash, ac
         </p> : (
           <div className="products-table">
             <table role="table" aria-label="Productos del catálogo">
-              <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Producto</th><th role="columnheader" scope="col">Categoría y marca</th><th role="columnheader" scope="col">{branch ? 'Precio · ' + branch.name : 'Precio'}</th><th role="columnheader" scope="col">Stock vendible</th><th role="columnheader" scope="col">Estado</th><th role="columnheader" scope="col">Consulta</th></tr></thead>
+              <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col"><div className="catalog-product-name">
+                <label className="catalog-select" title="Seleccionar los productos de esta página"><input type="checkbox"
+                  aria-label="Seleccionar los productos de esta página"
+                  checked={page.items.length > 0 && page.items.every((product) => selection.has(product.id))}
+                  onChange={(event) => { for (const product of page.items) toggleSelected(product.id, product.name, event.target.checked); }} /></label>
+                Producto</div></th><th role="columnheader" scope="col">Categoría y marca</th><th role="columnheader" scope="col">{branch ? 'Precio · ' + branch.name : 'Precio'}</th><th role="columnheader" scope="col">Stock vendible</th><th role="columnheader" scope="col">Estado</th><th role="columnheader" scope="col">Consulta</th></tr></thead>
               <tbody role="rowgroup">{page.items.map((product) => {
                 const category = classificationName(classifications.categories, product.categoryId);
                 const brand = classificationName(classifications.brands, product.brandId);
                 const preview = previews.get(product.id);
                 return <Fragment key={product.id}><tr role="row" className="catalog-product-row">
                   <th scope="row" role="rowheader"><div className="catalog-product-name">
+                    <label className="catalog-select"><input type="checkbox" aria-label={'Seleccionar ' + product.name} checked={selection.has(product.id)}
+                      onChange={(event) => toggleSelected(product.id, product.name, event.target.checked)} /></label>
                     {preview?.photoId && <img src={api.productPhotoURL(product.id, preview.photoId)} loading="lazy" alt="" />}
                     <button type="button" className="catalog-link" title={product.name} disabled={busy} onClick={(event) => {
                     listOrigin.current = event.currentTarget;
@@ -876,6 +893,11 @@ export function Catalog({ stores, priceRevision, stockRevision, branch, hash, ac
             </table>
           </div>
         ))}
+        {listVisible && <BulkBar selected={selection} onClear={() => setSelection(new Map())}
+          onLabels={(origin) => setBulk({ kind: 'labels', origin })} onPrices={(origin) => setBulk({ kind: 'prices', origin })} />}
+        {active && bulk?.kind === 'labels' && <BulkLabels ids={[...selection.keys()]} storeId={authorizedBranch?.id} returnTo={bulk.origin} onClose={() => setBulk(null)} />}
+        {active && bulk?.kind === 'prices' && <BulkPrices ids={[...selection.keys()]} branch={authorizedBranch} returnTo={bulk.origin}
+          onClose={() => setBulk(null)} onApplied={() => reloadList()} />}
         {page && (pageNumber > 1 || page.hasMore) && <nav className="catalog-pagination" aria-label="Páginas del catálogo">
           <button type="button" className="button-secondary" disabled={busy || pageNumber === 1} onClick={() => navigate({ page: pageNumber - 1 })}>Anterior</button>
           <span aria-current="page">Página {pageNumber}</span>

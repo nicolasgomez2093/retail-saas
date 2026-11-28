@@ -157,6 +157,7 @@ func New(cfg config.Config, db *pgxpool.Pool, service *auth.Service) *gin.Engine
 	registerReservations(version, db, service)
 	registerSales(version, db, service)
 	registerStorefront(version, db, service)
+	registerLabels(version, db, service)
 	return router
 }
 

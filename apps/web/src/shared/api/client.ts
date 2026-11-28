@@ -132,6 +132,14 @@ export type BarcodeMatch = { product: Product; variant: Variant };
 
 export type PriceList = { id: string; name: string };
 export type PriceAssignment = Store & { listId: string | null };
+export type PriceAdjustInput = {
+  productIds: string[]; mode: 'percent' | 'amount'; direction: 'up' | 'down'; value: string; round: string; apply: boolean;
+};
+export type PriceAdjustResult = {
+  currency: string; withoutPrice: number; applied: boolean;
+  items: { variantId: string; productId: string; productName: string; sku: string; size: string; color: string; before: string; after: string }[];
+};
+export type LabelSettings = { showPrice: boolean };
 export type PriceConfiguration = { currency: string; lists: PriceList[]; stores: PriceAssignment[] };
 export type PriceItem = { amount: string | null };
 export type ResolvedPrice = PriceItem & {
@@ -591,6 +599,10 @@ export const api = {
     request<Variant>('/products/' + encodeURIComponent(productId) + '/variants/' + encodeURIComponent(variantId), json('PATCH', data)),
   barcode: (code: string) => request<BarcodeMatch>('/barcodes/' + encodeURIComponent(code) + '/lookup'),
   priceLists: () => request<PriceConfiguration>('/price-lists'),
+  adjustPrices: (listId: string, input: PriceAdjustInput) =>
+    request<PriceAdjustResult>('/price-lists/' + encodeURIComponent(listId) + '/adjustments', json('POST', input)),
+  labelSettings: () => request<LabelSettings>('/settings/labels'),
+  saveLabelSettings: (data: LabelSettings) => request<LabelSettings>('/settings/labels', json('PUT', data)),
   createPriceList: (name: string) => request<PriceList>('/price-lists', json('POST', { name })),
   assignPriceList: (storeId: string, listId: string | null) =>
     request<void>('/stores/' + encodeURIComponent(storeId) + '/price-list', json('PUT', { listId })),
