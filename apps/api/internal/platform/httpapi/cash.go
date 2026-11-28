@@ -39,6 +39,10 @@ func registerCash(router *gin.RouterGroup, db *pgxpool.Pool, authService *auth.S
 			respondCash(c, http.StatusCreated, result, err)
 		}
 	}))
+	router.GET("/cash-sessions/:id/summary", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
+		result, err := svc.Summary(c.Request.Context(), actor, c.Query("store_id"), c.Param("id"))
+		respondCash(c, http.StatusOK, result, err)
+	}))
 	router.GET("/cash-sessions/:id/movements", authenticated(authService, func(c *gin.Context, actor auth.Identity) {
 		result, err := svc.Movements(c.Request.Context(), actor, c.Query("store_id"), c.Param("id"))
 		respondCash(c, http.StatusOK, result, err)

@@ -230,6 +230,11 @@ export type CashSession = {
 export type CashMovement = {
   id: string; sessionId: string; actorId: string; type: string; amount: string; reason: string; createdAt: string; saleId: string | null;
 };
+export type CashSessionSummary = {
+  currency: string; salesCount: number; salesTotal: string; onCredit: string; onCreditCount: number;
+  methods: { method: string; amount: string; refunded: string }[];
+  cash: { type: string; amount: string; count: number }[];
+};
 export type CashMovementInput = { storeId: string; type: 'manual_in' | 'manual_out'; amount: string; reason: string };
 
 export type Customer = { id: string; name: string; phone: string };
@@ -687,6 +692,9 @@ export const api = {
   }),
   closeCash: (storeId: string, id: string, declaredCash: string) =>
     request<CashSession>('/cash-sessions/' + encodeURIComponent(id) + '/close', json('POST', { storeId, declaredCash })),
+  cashSummary: (storeId: string, id: string) => request<CashSessionSummary>(
+    '/cash-sessions/' + encodeURIComponent(id) + '/summary?' + new URLSearchParams({ store_id: storeId }),
+  ),
   cashMovements: (storeId: string, id: string) => request<{ items: CashMovement[]; income?: string; outflow?: string; count?: number }>(
     '/cash-sessions/' + encodeURIComponent(id) + '/movements?' + new URLSearchParams({ store_id: storeId }),
   ),

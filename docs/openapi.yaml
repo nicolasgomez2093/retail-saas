@@ -2410,6 +2410,54 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/cash-sessions/{id}/summary:
+    parameters:
+      - $ref: '#/components/parameters/CashSessionID'
+    get:
+      operationId: getCashSessionSummary
+      summary: Resumen de una sesión de caja (vendido, cobros por medio de pago, fiado y desglose del efectivo).
+      description: >-
+        Mismo alcance que la sesión: quien supervisa ve todas, quien opera solo las propias. Los cobros por medio
+        incluyen ventas, cobros de fiados, señas y diferencias de cambios de la sesión, menos devoluciones.
+      parameters:
+        - $ref: '#/components/parameters/InventoryStoreQuery'
+      responses:
+        '200':
+          description: Resumen de la sesión.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [currency, salesCount, salesTotal, onCredit, onCreditCount, methods, cash]
+                properties:
+                  currency: {type: string}
+                  salesCount: {type: integer, minimum: 0}
+                  salesTotal: {type: string, description: Total de las ventas registradas en la sesión.}
+                  onCredit: {type: string, description: 'Monto vendido a fiado en la sesión (queda a cobrar).'}
+                  onCreditCount: {type: integer, minimum: 0}
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      required: [method, amount, refunded]
+                      properties:
+                        method: {type: string, enum: [cash, transfer, debit, credit, qr]}
+                        amount: {type: string, description: Neto cobrado con ese medio.}
+                        refunded: {type: string, description: 'Devuelto con ese medio, ya descontado del neto.'}
+                  cash:
+                    type: array
+                    items:
+                      type: object
+                      required: [type, amount, count]
+                      properties:
+                        type: {type: string, description: 'Tipo de movimiento de efectivo (sale_cash, receivable_cash, manual_out, ...).'}
+                        amount: {type: string, description: 'Suma con signo; los egresos son negativos.'}
+                        count: {type: integer, minimum: 1}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '500': {$ref: '#/components/responses/Error'}
   /api/v1/cash-sessions/{id}/movements:
     parameters:
       - $ref: '#/components/parameters/CashSessionID'

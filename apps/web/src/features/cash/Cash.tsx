@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, useId } from 'react';
 import {
   api, ApiError, type CashRegister, type CashRegisters, type CashSession, type CashMovement,
-  type CashMovementInput, type Store,
+  type CashMovementInput, type CashSessionSummary, type Store,
 } from '../../shared/api/client';
 import { posPrice } from '../pos/priceDisplay';
 import { decimalInput } from '../../shared/lib/decimal';
@@ -227,6 +227,7 @@ function SessionDetail({ id, storeId, currency, timezone, revision, onClosed }: 
   const [session, setSession] = useState<CashSession | null>(null);
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [movementTotals, setMovementTotals] = useState<{ income?: string; outflow?: string; count?: number }>({});
+  const [summary, setSummary] = useState<CashSessionSummary | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [busy, setBusy] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -244,6 +245,8 @@ function SessionDetail({ id, storeId, currency, timezone, revision, onClosed }: 
       setMovements(history.items);
       setMovementTotals({ income: history.income, outflow: history.outflow, count: history.count });
     }).catch((cause: unknown) => { if (active) setError(message(cause)); });
+    // The summary only adds detail: if it fails, the register still works with the cash figures above.
+    void api.cashSummary(storeId, id).then((result) => { if (active) setSummary(result); }).catch(() => { if (active) setSummary(null); });
     return () => { active = false; };
   }, [storeId, id, refresh, revision]);
 
@@ -299,52 +302,119 @@ function SessionDetail({ id, storeId, currency, timezone, revision, onClosed }: 
       {notice && <p role="status">{notice}</p>}
       {session && (
         <>
-          <h4>{session.status === 'OPEN' ? 'Sesión abierta' : 'Sesión cerrada'}</h4>
-          <dl className="cash-session-totals">
-            <div><dt>Saldo inicial</dt><dd>{display(session.openingCash)}</dd></div>
-            {movementTotals.income !== undefined && <div><dt>Ingresos en efectivo</dt><dd>{display(movementTotals.income)}</dd></div>}
-            {movementTotals.outflow !== undefined && <div><dt>Egresos en efectivo</dt><dd>{display(movementTotals.outflow)}</dd></div>}
-            <div><dt>Efectivo esperado</dt><dd>{display(session.expectedCash)}</dd></div>
-            {session.declaredCash !== null && <div><dt>Efectivo contado</dt><dd>{display(session.declaredCash)}</dd></div>}
-            {session.difference !== null && <div><dt>Diferencia</dt><dd>{display(session.difference)}</dd></div>}
-          </dl>
-          <div className="commercial-cash-columns">
-            <section className="commercial-cash-movements">
-          <h4>Movimientos de efectivo</h4>
-          {(movementTotals.count ?? 0) > movements.length && <p>Se muestran los últimos {movements.length} de {movementTotals.count} movimientos.</p>}
-          {movements.length === 0 ? <p>Todavía no hay movimientos para esta sesión.</p> : <ul className="cash-movements">
-            {movements.map((item) => <li key={item.id}>
-              <span>{item.reason}<small>{dates.format(new Date(item.createdAt))}</small></span>
-              <strong>{display(item.amount)}</strong>
-            </li>)}
-          </ul>}
-            </section>
-          {session.status === 'OPEN' && (
-            <div className="cash-operation-stack">
-              <details className="cash-movement-form">
-                <summary>Registrar ingreso o egreso</summary>
-                <form aria-label="Movimiento manual de caja" onSubmit={move}>
-                  <label>Tipo<select name="type" disabled={busy}><option value="manual_in">Ingreso</option><option value="manual_out">Egreso</option></select></label>
-                  <label>Importe en {currency}<input name="amount" inputMode="decimal" maxLength={19} required disabled={busy} /></label>
-                  <label>Motivo<input name="reason" maxLength={300} required disabled={busy} /></label>
-                  <button disabled={busy}>Registrar movimiento</button>
-                </form>
-              </details>
-              {!closing ? <button type="button" className="cash-controls" disabled={busy} onClick={() => setClosing(true)}>Hacer arqueo y cerrar</button>
-                : <form aria-label="Cerrar caja" className="cash-controls" onSubmit={close}>
-                  <h4>Arqueo de caja</h4>
-                  <label>Efectivo contado en {currency}<input name="declaredCash" inputMode="decimal" maxLength={19} required disabled={busy} /></label>
-                  <div className="actions">
-                    <button disabled={busy}>Confirmar cierre</button>
-                    <button type="button" disabled={busy} onClick={() => setClosing(false)}>Volver</button>
-                  </div>
-                </form>}
-            </div>
-          )}
-
+          <div className="cash-headline">
+            <h4>{session.status === 'OPEN' ? 'Sesión abierta' : 'Sesión cerrada'}</h4>
+            <small>Desde {dates.format(new Date(session.openedAt))}{session.closedAt ? ' hasta ' + dates.format(new Date(session.closedAt)) : ''}</small>
           </div>
+          <div className="cash-hero">
+            <div className="cash-hero-card">
+              <span className="cash-hero-label">Vendido</span>
+              <strong className="cash-hero-value">{summary ? display(summary.salesTotal) : '—'}</strong>
+              <span className="cash-hero-note">{summary ? salesNote(summary, display) : 'Calculando ventas…'}</span>
+            </div>
+            <div className="cash-hero-card cash-hero-drawer">
+              <span className="cash-hero-label">{session.status === 'OPEN' ? 'Efectivo que debería haber' : 'Efectivo esperado al cierre'}</span>
+              <strong className="cash-hero-value">{display(session.expectedCash)}</strong>
+              {session.declaredCash !== null && session.difference !== null
+                ? <span className="cash-hero-note" data-tone={tone(session.difference)}>
+                  Contado {display(session.declaredCash)} · {differenceText(session.difference, display)}
+                </span>
+                : <span className="cash-hero-note">En el cajón, con el saldo inicial de {display(session.openingCash)}</span>}
+            </div>
+          </div>
+
+          {session.status === 'OPEN' && <div className="cash-actions">
+            {!closing && <button type="button" className="cash-close-button" disabled={busy} onClick={() => setClosing(true)}>Hacer arqueo y cerrar</button>}
+            <details className="cash-movement-form">
+              <summary>Registrar gasto o ingreso</summary>
+              <form aria-label="Movimiento manual de caja" onSubmit={move}>
+                <label>Tipo<select name="type" disabled={busy}><option value="manual_out">Gasto o retiro</option><option value="manual_in">Ingreso</option></select></label>
+                <label>Importe en {currency}<input name="amount" inputMode="decimal" maxLength={19} required disabled={busy} /></label>
+                <label>Motivo<input name="reason" maxLength={300} required disabled={busy} placeholder="Ej. Compra de bolsas" /></label>
+                <button disabled={busy}>Registrar movimiento</button>
+              </form>
+            </details>
+          </div>}
+          {session.status === 'OPEN' && closing && <form aria-label="Cerrar caja" className="cash-close-form" onSubmit={close}>
+            <h4>Arqueo de caja</h4>
+            <p>Contá el efectivo del cajón. Debería haber <b>{display(session.expectedCash)}</b>.</p>
+            <label>Efectivo contado en {currency}<input name="declaredCash" inputMode="decimal" maxLength={19} required disabled={busy} autoFocus /></label>
+            <div className="actions">
+              <button disabled={busy}>Confirmar cierre</button>
+              <button type="button" className="cash-secondary" disabled={busy} onClick={() => setClosing(false)}>Volver</button>
+            </div>
+          </form>}
+
+          <div className="cash-details">
+            <section className="cash-detail-card" aria-label="Cobros por medio de pago">
+              <h5>Cobros por medio de pago</h5>
+              {!summary ? <p className="cash-detail-empty">Cargando…</p> : summary.methods.length === 0 && summary.onCredit === '0.00'
+                ? <p className="cash-detail-empty">Todavía no hay cobros en esta sesión.</p>
+                : <dl className="cash-lines">
+                  {summary.methods.map((item) => <div key={item.method}>
+                    <dt>{methodNames[item.method] ?? item.method}{item.refunded !== '0.00' && <small>Incluye devoluciones por {display(item.refunded)}</small>}</dt>
+                    <dd>{display(item.amount)}</dd>
+                  </div>)}
+                  {summary.onCredit !== '0.00' && <div className="cash-line-credit">
+                    <dt>Fiado<small>{summary.onCreditCount === 1 ? '1 venta' : summary.onCreditCount + ' ventas'} · queda a cobrar</small></dt>
+                    <dd>{display(summary.onCredit)}</dd>
+                  </div>}
+                </dl>}
+              <p className="cash-detail-hint">Incluye cobros de fiados, señas y cambios de esta sesión.</p>
+            </section>
+            <section className="cash-detail-card" aria-label="Cómo se llega al efectivo">
+              <h5>Cómo se llega al efectivo</h5>
+              <dl className="cash-lines">
+                <div><dt>Saldo inicial</dt><dd>{display(session.openingCash)}</dd></div>
+                {(summary?.cash ?? []).map((item) => <div key={item.type} data-tone={item.amount.startsWith('-') ? 'out' : 'in'}>
+                  <dt>{cashNames[item.type] ?? 'Otros movimientos'}<small>{item.count === 1 ? '1 movimiento' : item.count + ' movimientos'}</small></dt>
+                  <dd>{signed(item.amount, display)}</dd>
+                </div>)}
+                {!summary && movementTotals.income !== undefined && <>
+                  <div data-tone="in"><dt>Ingresos en efectivo</dt><dd>+ {display(movementTotals.income)}</dd></div>
+                  <div data-tone="out"><dt>Egresos en efectivo</dt><dd>− {display(movementTotals.outflow ?? '0.00')}</dd></div>
+                </>}
+                <div className="cash-line-total"><dt>Efectivo esperado</dt><dd>{display(session.expectedCash)}</dd></div>
+              </dl>
+            </section>
+          </div>
+
+          <details className="cash-history">
+            <summary>Ver movimientos de efectivo {movementTotals.count !== undefined && <span>{movementTotals.count}</span>}</summary>
+            {(movementTotals.count ?? 0) > movements.length && <p>Se muestran los últimos {movements.length} de {movementTotals.count} movimientos.</p>}
+            {movements.length === 0 ? <p>Todavía no hay movimientos para esta sesión.</p> : <ul className="cash-movements">
+              {movements.map((item) => <li key={item.id}>
+                <span>{item.reason}<small>{dates.format(new Date(item.createdAt))}</small></span>
+                <strong data-tone={item.amount.startsWith('-') ? 'out' : 'in'}>{signed(item.amount, display)}</strong>
+              </li>)}
+            </ul>}
+          </details>
         </>
       )}
     </section>
   );
+}
+
+const methodNames: Record<string, string> = { cash: 'Efectivo', transfer: 'Transferencia', debit: 'Débito', credit: 'Crédito', qr: 'QR' };
+const cashNames: Record<string, string> = {
+  sale_cash: 'Ventas en efectivo', receivable_cash: 'Cobros de fiado', reservation_deposit_cash: 'Señas',
+  sale_exchange_cash: 'Diferencias de cambios', sale_refund_cash: 'Devoluciones', manual_in: 'Ingresos', manual_out: 'Gastos y retiros',
+};
+
+function signed(amount: string, display: (value: string) => string) {
+  return amount.startsWith('-') ? '− ' + display(amount.slice(1)) : '+ ' + display(amount);
+}
+
+function tone(difference: string) {
+  return /^-?0+(\.0+)?$/.test(difference) ? 'ok' : difference.startsWith('-') ? 'out' : 'in';
+}
+
+function differenceText(difference: string, display: (value: string) => string) {
+  if (tone(difference) === 'ok') return 'sin diferencia';
+  return difference.startsWith('-') ? 'faltan ' + display(difference.slice(1)) : 'sobran ' + display(difference);
+}
+
+function salesNote(summary: CashSessionSummary, display: (value: string) => string) {
+  const count = summary.salesCount === 1 ? '1 venta' : summary.salesCount + ' ventas';
+  return summary.onCredit === '0.00' ? count : count + ' · ' + display(summary.onCredit) + ' fiado';
 }

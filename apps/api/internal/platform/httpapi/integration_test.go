@@ -1832,6 +1832,20 @@ func TestIdentityAcrossTenants(t *testing.T) {
 	request("GET", receivablesPath+cashQuery, "", "", second, 404)
 	request("GET", receivablesPath+"?store_id="+branch, "", "", cashier, 404)
 	request("GET", receivablesPath+cashQuery, "", "", operator, 403)
+	// The register summary: sold, credit given, money by method and the cash breakdown of the session.
+	creditSummaryPath := sessionsPath + "/" + creditSession + "/summary" + cashQuery
+	summary := request("GET", creditSummaryPath, "", "", cashier, 200).Body.String()
+	for _, want := range []string{`"salesCount":2`, `"salesTotal":"60.00"`, `"onCredit":"49.25"`, `"onCreditCount":2`,
+		`"methods":[{"method":"cash","amount":"7.50","refunded":"0.00"},{"method":"qr","amount":"3.25","refunded":"0.00"}]`,
+		`"cash":[{"type":"sale_cash","amount":"7.50","count":1}]`} {
+		if !strings.Contains(summary, want) {
+			t.Fatalf("resumen de caja sin %s: %s", want, summary)
+		}
+	}
+	request("GET", creditSummaryPath, "", "", nil, 401)
+	request("GET", creditSummaryPath, "", "", operator, 403)
+	request("GET", creditSummaryPath, "", "", second, 404)
+	request("GET", sessionsPath+"/no-es-un-id/summary"+cashQuery, "", "", cashier, 400)
 	request("POST", sessionsPath+"/"+creditSession+"/close", fmt.Sprintf(`{"storeId":"%s","declaredCash":"7.50"}`, created.StoreID), origin, cashier, 200)
 	if replay := expect(keyedCash(salesPath, creditDeposit, "credit-part", cashier), 201); replay.Body.String() != partCredit.Body.String() {
 		t.Fatal("el fiado cerrado debe conservar el mismo saldo original al reintentar")
