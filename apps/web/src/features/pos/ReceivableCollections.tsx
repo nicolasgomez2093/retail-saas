@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError, type CashRegisters, type Receivable, type ReceivablePaymentInput, type ReceivablePaymentPage, type SalePaymentMethod } from '../../shared/api/client';
 import { decimalInput, minorUnits } from '../../shared/lib/decimal';
 import { paymentLabels, paymentMethods } from './SalePayments';
+import { posPrice } from './priceDisplay';
 
 const pageSize = 25;
 type Attempt = { input: ReceivablePaymentInput; key: string };
@@ -23,7 +24,7 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
   const current = history?.key === key ? history : null;
   const sessions = registers.items.filter((register) => register.openSessionId);
   const dates = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: registers.timezone });
-  const display = (value: string) => item.currency + ' ' + value.replace('.', ',');
+  const display = (value: string) => item.currency + '\u00a0' + posPrice(value);
 
   useEffect(() => {
     let active = true;
@@ -86,13 +87,17 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
 
   return <section className="inventory-form" aria-label={'Abonos de la venta ' + item.saleNumber}>
     <h3>Abonos de la venta {item.saleNumber}</h3>
-    <p>{item.customerName} · Saldo inicial {display(item.originalAmount)}</p>
+    <p>{item.customerName}</p>
     {!current && <p role="status">Consultando abonos…</p>}
     {current?.error && <p role="alert">{current.error}</p>}
     {error && <p role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {current?.page && <>
-      <p>Saldo pendiente <strong>{display(current.page.outstandingAmount)}</strong></p>
+      <dl className="receivable-figures">
+        <div><dt>Fiado</dt><dd>{display(item.originalAmount)}</dd></div>
+        <div><dt>Abonado y compensado</dt><dd>{display(paidOf(item.originalAmount, current.page.outstandingAmount))}</dd></div>
+        <div className="receivable-due"><dt>Saldo pendiente</dt><dd>{display(current.page.outstandingAmount)}</dd></div>
+      </dl>
       {current.page.outstandingAmount !== '0.00' && (sessions.length === 0
         ? <p>Abrí una caja en esta sucursal para registrar un abono.</p>
         : <form className="inventory-form" aria-label="Registrar abono" onSubmit={submit}>
@@ -112,18 +117,19 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
           </label>
           <button disabled={disabled || busy || uncertain}>Registrar abono</button>
         </form>)}
-      {current.page.items.length === 0 ? <p>Todavía no hay abonos.</p> : <ul className="catalog-items">
-        {current.page.items.map((payment) => <li key={payment.id}>
-          {dates.format(new Date(payment.createdAt))} · {paymentLabels[payment.method]} · {display(payment.amount)}
-          {' · '}Saldo después del abono {display(payment.balanceAfter)}
-        </li>)}
-      </ul>}
-      {current.page.debtCredits.length > 0 && <>
-        <h4>Compensaciones por devoluciones</h4>
-        <ul className="catalog-items">{current.page.debtCredits.map((credit) => <li key={credit.id}>
-          {dates.format(new Date(credit.createdAt))} · {display(credit.amount)} · Saldo después del ajuste {display(credit.balanceAfter)}
-        </li>)}</ul>
-      </>}
+      <details className="receivable-breakdown" open={current.page.items.length + current.page.debtCredits.length <= 3}>
+        <summary>Desglose de abonos <span>{current.page.items.length + current.page.debtCredits.length}</span></summary>
+        {current.page.items.length + current.page.debtCredits.length === 0 ? <p>Todavía no hay abonos.</p> : <ul>
+          {current.page.items.map((payment) => <li key={payment.id}>
+            <span><b>{paymentLabels[payment.method]}</b><small>{dates.format(new Date(payment.createdAt))}</small></span>
+            <span><strong>− {display(payment.amount)}</strong><small>Queda {display(payment.balanceAfter)}</small></span>
+          </li>)}
+          {current.page.debtCredits.map((credit) => <li key={credit.id}>
+            <span><b>Compensación por devolución</b><small>{dates.format(new Date(credit.createdAt))}</small></span>
+            <span><strong>− {display(credit.amount)}</strong><small>Queda {display(credit.balanceAfter)}</small></span>
+          </li>)}
+        </ul>}
+      </details>
     </>}
     {uncertain && <button type="button" disabled={busy || disabled} onClick={() => {
       if (attempt.current) void record(attempt.current);
@@ -133,4 +139,9 @@ export function ReceivableCollections({ item, storeId, registers, revision, disa
       <button type="button" disabled={!current?.page?.hasMore || busy || uncertain} onClick={() => setOffset(offset + pageSize)}>Siguiente</button>
     </nav>}
   </section>;
+}
+
+function paidOf(original: string, outstanding: string) {
+  const cents = minorUnits(original) - minorUnits(outstanding);
+  return (cents / 100n).toString() + '.' + (cents % 100n).toString().padStart(2, '0');
 }

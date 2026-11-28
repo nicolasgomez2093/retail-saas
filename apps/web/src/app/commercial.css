@@ -686,3 +686,19 @@ main.commercial-shell{display:block;padding-bottom:80px}.commercial-shell .retai
 .existences-empty p{margin:0 auto 18px;max-width:440px;line-height:1.6}
 .existences-empty .primary-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:9px;font-weight:700;text-decoration:none;transition:.16s}
 .existences-empty .primary-link:hover{background:#174d3c;transform:translateY(-1px);box-shadow:0 5px 15px #173d3210}
+
+/* Fiados: figures of the receivable and a collapsible payment breakdown. */
+.commercial-shell .receivable-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0; }
+.commercial-shell .receivable-figures > div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.commercial-shell .receivable-figures dt { font-size: 13px; color: var(--muted); }
+.commercial-shell .receivable-figures dd { margin: 4px 0 0; font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.commercial-shell .receivable-figures .receivable-due { background: var(--selection); border-color: #c5dccf; }
+.commercial-shell .receivable-breakdown { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.commercial-shell .receivable-breakdown > summary { cursor: pointer; padding: 12px 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.commercial-shell .receivable-breakdown > summary span { padding: 1px 8px; border-radius: 999px; background: var(--selection); font-size: 12.5px; }
+.commercial-shell .receivable-breakdown ul { list-style: none; margin: 0; padding: 0 14px 6px; }
+.commercial-shell .receivable-breakdown li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #edf1ee; }
+.commercial-shell .receivable-breakdown li > span { display: grid; gap: 2px; min-width: 0; }
+.commercial-shell .receivable-breakdown li > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.commercial-shell .receivable-breakdown small { color: var(--muted); font-size: 12px; }
+.commercial-shell .receivable-breakdown > p { margin: 0; padding: 0 14px 12px; color: var(--muted); }
