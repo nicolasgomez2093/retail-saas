@@ -52,26 +52,17 @@ function closeDisclosureOnEscape(event: KeyboardEvent<HTMLDetailsElement>) {
   event.currentTarget.querySelector('summary')?.focus();
 }
 
-function OperationLinks({ access, hasLocations, location, sku, variantId }: { access: ExistenceAccess; hasLocations: boolean; location?: string; sku?: string; variantId?: string }) {
-  const params = location ? new URLSearchParams({ ubicacion: location }) : undefined;
-  const movementParams = new URLSearchParams(params);
-  const adjustmentParams = new URLSearchParams(params);
-  if (variantId) {
-    movementParams.set('variante', variantId);
-    adjustmentParams.set('variante', variantId);
-  }
-  if (!hasLocations && !access.canManageLocations && !access.canCatalog && !variantId) return null;
-  return <details className="existences-operations" onKeyDown={closeDisclosureOnEscape}>
-    <summary>Acciones</summary>
-    <nav className="existences-links" aria-label="Operaciones disponibles">
-      {(hasLocations || variantId) && <a href={routeHref('stock/movimientos', movementParams)}>Movimientos</a>}
-      {(access.canManageLocations || hasLocations && (access.canAdjust || access.canManageMinimums)) &&
-        <a href={routeHref('stock/ajustes', adjustmentParams)}>Ajustes y mínimos</a>}
-      {hasLocations && access.canAdjust && <a href={routeHref('stock/conteos', params)}>Conteos</a>}
-      {hasLocations && access.canTransfer && <a href={routeHref('stock/transferencias')}>Transferencias</a>}
-      {access.canCatalog && <a href={routeHref('productos', sku ? new URLSearchParams({ q: sku }) : undefined)}>Catálogo</a>}
-    </nav>
-  </details>;
+// Shortcuts from one variant's detail to the operations on that same variant. The sections themselves are tabs above.
+function VariantActions({ access, hasLocations, variantId }: { access: ExistenceAccess; hasLocations: boolean; variantId?: string }) {
+  if (!variantId) return null;
+  const params = new URLSearchParams({ variante: variantId });
+  const movements = hasLocations;
+  const adjust = access.canManageLocations || hasLocations && (access.canAdjust || access.canManageMinimums);
+  if (!movements && !adjust) return null;
+  return <nav className="existences-variant-actions" aria-label="Operaciones de esta variante">
+    {movements && <a className="button-secondary" href={routeHref('stock/movimientos', params)}>Ver movimientos de esta variante</a>}
+    {adjust && <a className="button-secondary" href={routeHref('stock/ajustes', params)}>Ajustar stock o mínimo</a>}
+  </nav>;
 }
 
 function FilterForm({ filters, categories, brands, locations, categoryError, brandError, onApply }: {
@@ -406,9 +397,8 @@ export function Existences({ branch, hash, stockRevision, locationRevision, cont
         <strong>{match.product.name} · {match.variant.sku}</strong>{' '}
         <a className="existences-detail-link" href={existencesHref({ ...values, detalle: match.variant.id })}>Ver stock del código en {branch.name}</a>
       </>}</BarcodeScanner>}
-      {viewDetail ? detailData && <OperationLinks access={detailData.access} hasLocations={detailData.locations.some(location => location.active)}
-        sku={detailData.item.sku} variantId={detailData.item.variantId ?? undefined} /> : data && <OperationLinks access={data.access} hasLocations={Boolean(locations.result?.data?.items.length)}
-        location={values.ubicacion} />}
+      {viewDetail && detailData && <VariantActions access={detailData.access} hasLocations={detailData.locations.some(location => location.active)}
+        variantId={detailData.item.variantId ?? undefined} />}
       {!viewDetail && data && <button type="button" className="button-secondary existences-csv" aria-disabled={exporting}
         onClick={() => void downloadCSV()}>{exporting ? 'Preparando CSV…' : <><DownloadIcon /> Descargar CSV</>}</button>}
       <button type="button" className="button-secondary existences-refresh" aria-label="Actualizar existencias" aria-disabled={reading}

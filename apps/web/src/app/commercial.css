@@ -752,3 +752,12 @@ main.commercial-shell{display:block;padding-bottom:80px}.commercial-shell .retai
 .commercial-shell .cash-register-card:hover { border-color: #9dbbad; background: #f7faf8; }
 .commercial-shell .cash-register-card[aria-pressed="true"] { border-color: var(--accent); background: #f0f8f6; box-shadow: inset 0 0 0 1px var(--accent); }
 .commercial-shell .cash-register-card small { color: var(--muted); }
+
+/* Inventario: the sections are always visible as tabs; on phones they scroll sideways. */
+.commercial-shell .inventory-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.commercial-shell .inventory-tabs::-webkit-scrollbar { display: none; }
+.commercial-shell .inventory-tabs a { flex: none; white-space: nowrap; }
+.commercial-shell .existences-variant-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.commercial-shell .existences-variant-actions a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--accent); font-weight: 700; text-decoration: none; }
+.commercial-shell .existences-variant-actions a:hover { border-color: #9dbbad; background: #f7faf8; }

@@ -330,6 +330,9 @@ export function App() {
                     <a href={routeHref('vender')} aria-current={destination === 'vender' ? 'page' : undefined}>Punto de venta</a>
                     <a href={routeHref('ventas')} aria-current={destination === 'ventas' ? 'page' : undefined}>Historial de ventas</a>
                   </nav>}
+                {stockView && branch && <nav className="report-links inventory-tabs" aria-label="Secciones de inventario">
+                  {stockViews.map(([id, label]) => <a key={id} href={routeHref(id)} aria-current={stockView === id ? 'page' : undefined}>{label}</a>)}
+                </nav>}
                 {(destination === 'clientes' || customerAccounts) && branch && routeAccess === 'allowed' &&
                   <nav className="report-links" aria-label="Operaciones de clientes">
                     <a href={routeHref('clientes')} aria-current={destination === 'clientes' ? 'page' : undefined}>Clientes</a>
