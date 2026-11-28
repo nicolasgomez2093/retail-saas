@@ -1102,14 +1102,6 @@ export function Catalog({ stores, priceRevision, stockRevision, branch, hash, ac
           setCommercialRevision(value => value + 1); reloadList(); onInventoryChanged();
         }} />}
       </div>
-      {recordReadable && detail && <aside className="commercial-preparation-side" aria-label="Resumen de preparación del producto">
-        <h3>Preparación en {branch?.name ?? 'la sucursal'}</h3>
-        <div><span>✓</span><p><strong>Datos generales</strong><small>Producto guardado</small></p></div>
-        <div><span>{detail.variants.length ? '✓' : '○'}</span><p><strong>Variantes</strong><small>{detail.variants.length} combinaciones creadas</small></p></div>
-        <div><span>○</span><p><strong>Precios y mercadería</strong><small>Consultar el estado de cada variante</small></p></div>
-        <button type="button" className="button-secondary" onClick={() => setWorkspaceTab('resumen')}>Ver resumen →</button>
-        <p className="commercial-aside-note">Una ficha, todo el recorrido. Cada operación conserva su confirmación.</p>
-      </aside>}
       </div>
       {active && label && (access === 'manage' || (access === 'read' && label.product.status === 'active' && label.variant.status === 'active')) && <LabelDialog key={label.variant.id + ':' + batchLabels + ':' + (authorizedBranch?.id ?? '')} data={label} storeId={authorizedBranch?.id}
         additional={batchLabels && detail ? detail.variants.filter(item => item.status === 'active' && item.id !== label.variant.id).map(variant => ({ product: detail.product, variant })) : undefined}

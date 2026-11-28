@@ -132,7 +132,7 @@ function PriceEditor({ variant, listId, currency, active, shared, access, onChan
     <button ref={opener} type="button" disabled={busy || denied || !configurationReady || !read?.data || !dirty} onClick={() => {
       if (!/^\d+(\.\d{1,2})?$/.test(value.trim().replace(',', '.'))) { setError('Ingresá un importe válido con hasta dos decimales.'); return; }
       dialog.current?.showModal();
-    }}>{busy ? 'Guardando…' : 'Guardar precio'}</button>
+    }}>{busy ? 'Guardando…' : 'Guardar'}<span className="pos-sr-only"> precio de {variant.sku}</span></button>
     {(error || read?.error) && <p role="alert" className="commercial-full">{error || read?.error}</p>}
     {notice && <p role="status" className="commercial-full">{notice}</p>}
     {(read?.error || error) && <button type="button" disabled={busy} onClick={() => setRetry(current => current + 1)}>Consultar precio actual</button>}
