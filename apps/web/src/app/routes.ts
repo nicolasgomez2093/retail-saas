@@ -21,6 +21,7 @@ const paths = {
   configuracion: 'administracion',
   'configuracion/sucursales': 'administracion/sucursales',
   'configuracion/usuarios': 'administracion/usuarios',
+  'configuracion/tienda': 'administracion/tienda-online',
 } as const;
 
 export type Destination = keyof typeof paths;

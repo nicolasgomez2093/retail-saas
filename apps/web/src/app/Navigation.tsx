@@ -6,7 +6,7 @@ import {
   checkNavigationAccess, navigationAccess, navigationAccessKey, navigationAccessVersion, subscribeNavigationAccess,
 } from '../shared/api/navigationAccess';
 
-type AccessResource = 'cash' | 'stock' | 'purchases' | 'suppliers' | 'stores' | 'users' | 'prices';
+type AccessResource = 'cash' | 'stock' | 'purchases' | 'suppliers' | 'stores' | 'users' | 'prices' | 'storefront';
 type Entry = { label: string; route: Destination; access?: AccessResource };
 type Group = { id: string; label: string; entries: Entry[] };
 const stockEntries: Entry[] = stockViews.map(([route, label]) => ({ label, route, access: 'stock' }));
@@ -33,6 +33,7 @@ const groups: Group[] = [
     { label: 'Configuración', route: 'configuracion' },
     { label: 'Sucursales', route: 'configuracion/sucursales', access: 'stores' },
     { label: 'Usuarios y permisos', route: 'configuracion/usuarios', access: 'users' },
+    { label: 'Tienda online', route: 'configuracion/tienda', access: 'storefront' },
   ] },
 ];
 const mobileEntries: Entry[] = [
@@ -79,6 +80,7 @@ function accessKey(resource: AccessResource, branchId?: string) {
     case 'stores': return '/stores/admin';
     case 'users': return '/users';
     case 'prices': return '/price-lists';
+    case 'storefront': return '/storefront';
     case 'stock': return '';
   }
 }
@@ -111,6 +113,7 @@ function probe(resource: AccessResource, branchId?: string, retry = false) {
     case 'stores': checkNavigationAccess(key, api.managedStores, retry); break;
     case 'users': checkNavigationAccess(key, api.users, retry); break;
     case 'prices': checkNavigationAccess(key, api.priceLists, retry); break;
+    case 'storefront': checkNavigationAccess(key, api.storefront, retry); break;
   }
 }
 const menuIcons: Partial<Record<Destination, string>> = {
@@ -240,6 +243,7 @@ export function ManagementHub({ branchId }: { branchId?: string }) {
 function ContextualAdministration({ branchId }: { branchId?: string }) {
   const entries: Entry[] = [
     { label: 'Listas de precios', route: 'configuracion/precios', access: 'prices' },
+    { label: 'Tienda online', route: 'configuracion/tienda', access: 'storefront' },
     { label: 'Configuración', route: 'configuracion' },
   ];
   const allowed = entries.filter(entry => entryAccess(entry, branchId) === 'allowed');

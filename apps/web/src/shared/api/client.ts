@@ -388,6 +388,39 @@ export type SaleTicket = {
   sale: Sale; merchantName: string; storeCode: string; storeName: string; storeAddress: string; timezone: string;
 };
 
+export type StorefrontSettings = {
+  enabled: boolean;
+  storeId: string | null;
+  whatsapp: string;
+  title: string;
+  welcome: string;
+  showSoldOut: boolean;
+};
+
+export type StorefrontProductStatus = 'published' | 'sold_out' | 'hidden' | 'no_photo' | 'no_price';
+
+export type StorefrontAdminProduct = {
+  id: string;
+  name: string;
+  category: string | null;
+  imageId: string | null;
+  hidden: boolean;
+  status: StorefrontProductStatus;
+  priceFrom: string | null;
+  priceTo: string | null;
+  variants: number;
+  available: number;
+};
+
+export type StorefrontAdmin = StorefrontSettings & {
+  slug: string;
+  commerceName: string;
+  currency: string;
+  stores: { id: string; code: string; name: string }[];
+  products: StorefrontAdminProduct[];
+  summary: { visible: number; hidden: number; noPhoto: number; noPrice: number; soldOut: number; truncated: number };
+};
+
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly code?: string, public readonly field?: string,
     public readonly rows?: VariantBatchIssue[], public readonly variantIds?: string[],
@@ -577,6 +610,11 @@ export const api = {
   },
   setInventoryCosts: (storeId: string, items: { variantId: string; unitCost: string }[], reason = '') =>
     request<{ items: CostRevision[] }>('/inventory/costs', json('PUT', { storeId, reason, items })),
+
+  storefront: () => request<StorefrontAdmin>('/storefront'),
+  saveStorefront: (settings: StorefrontSettings) => request<StorefrontAdmin>('/storefront', json('PUT', settings)),
+  setStorefrontHidden: (productId: string, hidden: boolean) =>
+    request<void>('/storefront/products/' + encodeURIComponent(productId), json('PUT', { hidden })),
 
   createLocation: (data: LocationInput) => request<StockLocation>('/locations', json('POST', data)),
   stockBalances: (storeId: string, locationId: string, lowOnly = false) => request<{ items: StockBalance[] }>(

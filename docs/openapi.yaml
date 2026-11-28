@@ -4182,6 +4182,116 @@ paths:
         '403': {$ref: '#/components/responses/Error'}
         '404': {$ref: '#/components/responses/Error'}
         '500': {$ref: '#/components/responses/Error'}
+  /api/v1/storefront:
+    get:
+      operationId: getStorefront
+      summary: Configuración de la tienda online y estado de cada producto.
+      description: >
+        Requiere storefront:manage (dueño). Devuelve la configuración y cómo se vería cada producto activo en la tienda pública,
+        con los precios y el stock de la sucursal elegida (o de la primera sucursal activa si todavía no se eligió).
+      responses:
+        '200':
+          description: Configuración y productos.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorefrontAdmin'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+    put:
+      operationId: saveStorefront
+      summary: Guardar la configuración de la tienda online.
+      description: >
+        Requiere storefront:manage. El WhatsApp se guarda solo con dígitos (8 a 15, con código de país). Publicar exige sucursal
+        activa y WhatsApp (400 storefront_incomplete).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StorefrontSettings'}
+      responses:
+        '200':
+          description: Configuración guardada.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorefrontAdmin'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /api/v1/storefront/products/{id}:
+    put:
+      operationId: setStorefrontProductHidden
+      summary: Mostrar u ocultar un producto en la tienda online.
+      parameters:
+        - {$ref: '#/components/parameters/ProductID'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [hidden]
+              properties:
+                hidden: {type: boolean}
+      responses:
+        '204': {description: Guardado.}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /api/v1/public/storefronts/{slug}:
+    get:
+      operationId: getPublicStorefront
+      summary: Catálogo público de un comercio.
+      description: >
+        Sin sesión. Un producto por tarjeta (no una por talle o color): activo, no oculto, con foto y con al menos una variante
+        activa con precio en la lista de la sucursal. Nunca expone cantidades, SKU ni costos. Una tienda inexistente,
+        desactivada o de un comercio o sucursal inactivos responde 404. Limitado por dirección del cliente (429).
+      security: []
+      parameters:
+        - {$ref: '#/components/parameters/StorefrontSlug'}
+      responses:
+        '200':
+          description: Tienda y productos.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicStorefront'}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+  /api/v1/public/storefronts/{slug}/products/{id}:
+    get:
+      operationId: getPublicStorefrontProduct
+      summary: Ficha pública de un producto con sus talles y colores.
+      description: Sin sesión. Cada variante dice solo si está disponible, no cuántas unidades hay.
+      security: []
+      parameters:
+        - {$ref: '#/components/parameters/StorefrontSlug'}
+        - {$ref: '#/components/parameters/ProductID'}
+      responses:
+        '200':
+          description: Ficha del producto.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicStorefrontProduct'}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+  /api/v1/public/storefronts/{slug}/images/{imageId}:
+    get:
+      operationId: getPublicStorefrontImage
+      summary: Foto reducida de un producto publicado.
+      description: Sin sesión. card entra en 480 px y detail en 1080 px. Se puede guardar en caché una hora.
+      security: []
+      parameters:
+        - {$ref: '#/components/parameters/StorefrontSlug'}
+        - {$ref: '#/components/parameters/ProductImageID'}
+        - {name: size, in: query, schema: {type: string, enum: [card, detail], default: card}}
+      responses:
+        '200':
+          description: Foto JPEG.
+          content:
+            image/jpeg:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
 components:
   requestBodies:
     StoreAction:
@@ -4205,6 +4315,11 @@ components:
             properties:
               name: {type: string, minLength: 1, maxLength: 120}
   parameters:
+    StorefrontSlug:
+      name: slug
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 80}
     SaleMethodQuery:
       name: method
       in: query
@@ -4256,6 +4371,119 @@ components:
       required: true
       schema: {type: string, format: uuid}
   schemas:
+    StorefrontSettings:
+      type: object
+      additionalProperties: false
+      required: [enabled, storeId, whatsapp, title, welcome, showSoldOut]
+      properties:
+        enabled: {type: boolean}
+        storeId: {type: [string, 'null'], format: uuid}
+        whatsapp: {type: string, description: 'Dígitos con código de país; acepta espacios, guiones, paréntesis y +.'}
+        title: {type: string, maxLength: 80, description: Vacío usa el nombre del comercio.}
+        welcome: {type: string, maxLength: 300}
+        showSoldOut: {type: boolean}
+    StorefrontAdmin:
+      allOf:
+        - {$ref: '#/components/schemas/StorefrontSettings'}
+        - type: object
+          required: [slug, commerceName, currency, stores, products, summary]
+          properties:
+            slug: {type: string}
+            commerceName: {type: string}
+            currency: {type: string}
+            stores:
+              type: array
+              items:
+                type: object
+                required: [id, code, name]
+                properties:
+                  id: {type: string, format: uuid}
+                  code: {type: string}
+                  name: {type: string}
+            products:
+              type: array
+              maxItems: 2000
+              items:
+                type: object
+                required: [id, name, category, imageId, hidden, status, priceFrom, priceTo, variants, available]
+                properties:
+                  id: {type: string, format: uuid}
+                  name: {type: string}
+                  category: {type: [string, 'null']}
+                  imageId: {type: [string, 'null'], format: uuid}
+                  hidden: {type: boolean}
+                  status: {type: string, enum: [published, sold_out, hidden, no_photo, no_price]}
+                  priceFrom: {type: [string, 'null']}
+                  priceTo: {type: [string, 'null']}
+                  variants: {type: integer, description: Variantes activas con precio en la sucursal.}
+                  available: {type: integer, description: Variantes con stock vendible.}
+            summary:
+              type: object
+              required: [visible, hidden, noPhoto, noPrice, soldOut, truncated]
+              properties:
+                visible: {type: integer}
+                hidden: {type: integer}
+                noPhoto: {type: integer}
+                noPrice: {type: integer}
+                soldOut: {type: integer}
+                truncated: {type: integer}
+    PublicStorefrontCard:
+      type: object
+      required: [id, name, categoryId, brand, imageId, priceFrom, priceTo, available]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        categoryId: {type: [string, 'null'], format: uuid}
+        brand: {type: [string, 'null']}
+        imageId: {type: string, format: uuid}
+        priceFrom: {type: string}
+        priceTo: {type: string}
+        available: {type: boolean}
+    PublicStorefront:
+      type: object
+      required: [slug, name, welcome, whatsapp, currency, branch, address, categories, products]
+      properties:
+        slug: {type: string}
+        name: {type: string}
+        welcome: {type: string}
+        whatsapp: {type: string}
+        currency: {type: string}
+        branch: {type: string}
+        address: {type: string}
+        categories:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: {type: string, format: uuid}
+              name: {type: string}
+        products:
+          type: array
+          items: {$ref: '#/components/schemas/PublicStorefrontCard'}
+    PublicStorefrontProduct:
+      allOf:
+        - {$ref: '#/components/schemas/PublicStorefrontCard'}
+        - type: object
+          required: [description, category, images, variants]
+          properties:
+            description: {type: string}
+            category: {type: [string, 'null']}
+            images:
+              type: array
+              items: {type: string, format: uuid}
+            variants:
+              type: array
+              items:
+                type: object
+                required: [id, size, color, colorHex, price, available]
+                properties:
+                  id: {type: string, format: uuid}
+                  size: {type: string}
+                  color: {type: string}
+                  colorHex: {type: [string, 'null']}
+                  price: {type: string}
+                  available: {type: boolean}
     CollectionsReport:
       type: object
       required: [timezone, methods, sources, daily, items, hasMore]

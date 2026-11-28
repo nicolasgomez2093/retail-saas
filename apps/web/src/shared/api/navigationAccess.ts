@@ -1,7 +1,7 @@
 export type Access = 'checking' | 'allowed' | 'denied' | 'error';
 
 const endpoints = new Set([
-  '/cash-registers', '/purchase-orders', '/suppliers', '/stores/admin', '/users', '/price-lists',
+  '/cash-registers', '/purchase-orders', '/suppliers', '/stores/admin', '/users', '/price-lists', '/storefront',
 ]);
 const results = new Map<string, Access>();
 const pending = new Map<string, number>();

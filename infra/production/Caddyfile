@@ -20,6 +20,9 @@
 		header @hashed Cache-Control "public, max-age=31536000, immutable"
 		@shell not path /assets/*
 		header @shell Cache-Control "no-cache"
+		# The public storefront (/tienda/<comercio>/...) is its own page; the rest is the back office.
+		@storefront path /tienda /tienda/*
+		rewrite @storefront /tienda.html
 		try_files {path} /index.html
 		file_server
 	}
